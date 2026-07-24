@@ -29,16 +29,47 @@ def parse_date_list(value) -> set[date]:
     return result
 
 
+def annual_date_applies(
+    selected_date: date,
+    start,
+    end,
+) -> bool:
+    """Compare an annual interval by month/day, including year-end spans."""
+    selected_key = (selected_date.month, selected_date.day)
+    start_key = (start.month, start.day) if pd.notna(start) else None
+    end_key = (end.month, end.day) if pd.notna(end) else None
+
+    if start_key and end_key:
+        if start_key <= end_key:
+            return start_key <= selected_key <= end_key
+        return selected_key >= start_key or selected_key <= end_key
+    if start_key:
+        return selected_key >= start_key
+    if end_key:
+        return selected_key <= end_key
+    return True
+
+
 def row_applies_on(row: pd.Series, selected_date: date) -> bool:
-    if selected_date in parse_date_list(row.get("fechas_excluidas", "")):
+    repetition = normalize_lookup(row.get("repeticion", ""))
+    exclusions = parse_date_list(row.get("fechas_excluidas", ""))
+    if repetition == "anual":
+        selected_key = (selected_date.month, selected_date.day)
+        if any((excluded.month, excluded.day) == selected_key for excluded in exclusions):
+            return False
+    elif selected_date in exclusions:
         return False
 
     start = row.get("fecha_inicio")
     end = row.get("fecha_fin")
-    if pd.notna(start) and selected_date < start.date():
-        return False
-    if pd.notna(end) and selected_date > end.date():
-        return False
+    if repetition == "anual":
+        if not annual_date_applies(selected_date, start, end):
+            return False
+    else:
+        if pd.notna(start) and selected_date < start.date():
+            return False
+        if pd.notna(end) and selected_date > end.date():
+            return False
 
     raw_days = row.get("dias_semana", "")
     days_text = "" if pd.isna(raw_days) else normalize_lookup(raw_days)

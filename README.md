@@ -28,6 +28,18 @@ en secretos de Streamlit.
 Las comprobaciones de vigencia se guardan como historial en la pestaña
 `confirmaciones_recursos`; no sobrescriben la información del recurso.
 
+## Fechas recurrentes
+
+La columna `repeticion` de `contenidos-recursos` controla cómo se aplican
+`fecha_inicio` y `fecha_fin`:
+
+- `anual`: compara solo el día y el mes; sirve para temporadas, horarios
+  estacionales y cierres fijos que se repiten cada año.
+- `puntual` o vacío: compara la fecha completa, incluido el año; sirve para
+  eventos, cierres técnicos y excepciones concretas.
+
+Los intervalos anuales que cruzan diciembre y enero también son compatibles.
+
 ## Identificadores y migración
 
 Se recomienda añadir estas columnas:

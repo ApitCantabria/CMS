@@ -62,6 +62,48 @@ class ResourceTests(unittest.TestCase):
         self.assertFalse(row_applies_on(row, date(2026, 7, 25)))
         self.assertFalse(row_applies_on(row, date(2026, 7, 31)))
 
+    def test_annual_date_range_ignores_year(self):
+        row = pd.Series({
+            "fecha_inicio": pd.Timestamp("2026-06-15"),
+            "fecha_fin": pd.Timestamp("2026-09-15"),
+            "repeticion": "anual",
+        })
+
+        self.assertTrue(row_applies_on(row, date(2032, 7, 20)))
+        self.assertFalse(row_applies_on(row, date(2032, 10, 20)))
+
+    def test_annual_date_range_supports_year_end_spans(self):
+        row = pd.Series({
+            "fecha_inicio": pd.Timestamp("2026-10-21"),
+            "fecha_fin": pd.Timestamp("2027-02-28"),
+            "repeticion": "ANUAL",
+        })
+
+        self.assertTrue(row_applies_on(row, date(2032, 12, 1)))
+        self.assertTrue(row_applies_on(row, date(2033, 2, 15)))
+        self.assertFalse(row_applies_on(row, date(2033, 5, 1)))
+
+    def test_annual_exclusions_compare_only_month_and_day(self):
+        row = pd.Series({
+            "fecha_inicio": pd.Timestamp("2026-01-01"),
+            "fecha_fin": pd.Timestamp("2026-12-31"),
+            "fechas_excluidas": "25/12/2026",
+            "repeticion": "anual",
+        })
+
+        self.assertFalse(row_applies_on(row, date(2032, 12, 25)))
+        self.assertTrue(row_applies_on(row, date(2032, 12, 26)))
+
+    def test_point_in_time_date_range_still_uses_year(self):
+        row = pd.Series({
+            "fecha_inicio": pd.Timestamp("2026-06-15"),
+            "fecha_fin": pd.Timestamp("2026-09-15"),
+            "repeticion": "puntual",
+        })
+
+        self.assertTrue(row_applies_on(row, date(2026, 7, 20)))
+        self.assertFalse(row_applies_on(row, date(2027, 7, 20)))
+
     def test_resource_id_is_preferred(self):
         raw = pd.DataFrame([
             {"recurso_id": "r1", "recurso": "Museo", "contenido": "Correcto"},

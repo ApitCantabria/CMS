@@ -23,7 +23,7 @@ SHEET_SCHEMAS = {
     },
     "contenidos_recursos": {
         "required": {"recurso"},
-        "recommended": {"recurso_id", "contenido"},
+        "recommended": {"recurso_id", "contenido", "repeticion"},
     },
     "restaurantes": {
         "required": {"restaurante", "municipio"},
