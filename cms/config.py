@@ -11,7 +11,7 @@ SHEET_NAMES = {
 SHEET_URLS = {
     key: (
         f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq"
-        f"?tqx=out:csv&sheet={sheet_name}"
+        f"?tqx=out:csv&headers=1&sheet={sheet_name}"
     )
     for key, sheet_name in SHEET_NAMES.items()
 }

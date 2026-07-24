@@ -13,6 +13,7 @@ except ModuleNotFoundError:
     requests_stub.post = lambda *args, **kwargs: None
     sys.modules["requests"] = requests_stub
 
+from cms.config import SHEET_URLS
 from cms.data import DataSourceError, load_all_sheets, normalize_lookup, prepare_frame
 from cms.resources import (
     attach_restaurant_ratings,
@@ -28,6 +29,11 @@ from cms.submissions import (
 
 
 class DataTests(unittest.TestCase):
+    def test_sheet_exports_force_exactly_one_header_row(self):
+        self.assertTrue(
+            all("headers=1" in url for url in SHEET_URLS.values())
+        )
+
     def test_lookup_is_case_accent_and_space_insensitive(self):
         self.assertEqual(normalize_lookup("  San   Vicente  "), "san vicente")
         self.assertEqual(normalize_lookup("Café"), "cafe")
