@@ -672,11 +672,14 @@ def formulario_incidencia(
         safe_key(part) for part in key_parts if str(part).strip()
     )
 
-    with st.expander("Reportar dato incorrecto", expanded=False):
+    with st.expander(
+        "Reportar un dato incorrecto o añadir información que falta",
+        expanded=False,
+    ):
         with st.form(form_key):
 
             guia = st.text_input(
-                "Nombre del guía",
+                "Tu nombre",
                 placeholder="Escribe tu nombre y apellidos",
                 key=f"guia_{form_key}",
             )
@@ -1077,25 +1080,36 @@ def modulo_recursos(dfs):
         """)
 
         if contenido_disponible:
-            formulario_confirmacion_recurso(
+            col_confirmacion, col_incidencia = st.columns(2, gap="small")
+            with col_confirmacion:
+                formulario_confirmacion_recurso(
+                    nombre=nombre,
+                    municipio=municipio,
+                    entidad_id=recurso_id,
+                    secciones_disponibles=confirmation_section_options(
+                        contenido_fecha,
+                        web,
+                    ),
+                    item_key=idx,
+                )
+            with col_incidencia:
+                formulario_incidencia(
+                    tipo="recurso",
+                    categoria="correccion",
+                    nombre=nombre,
+                    municipio=municipio,
+                    item_key=idx,
+                    entidad_id=recurso_id,
+                )
+        else:
+            formulario_incidencia(
+                tipo="recurso",
+                categoria="correccion",
                 nombre=nombre,
                 municipio=municipio,
-                entidad_id=recurso_id,
-                secciones_disponibles=confirmation_section_options(
-                    contenido_fecha,
-                    web,
-                ),
                 item_key=idx,
+                entidad_id=recurso_id,
             )
-
-        formulario_incidencia(
-            tipo="recurso",
-            categoria="correccion",
-            nombre=nombre,
-            municipio=municipio,
-            item_key=idx,
-            entidad_id=recurso_id,
-        )
 
 
 # ─────────────────────────────────────────────
