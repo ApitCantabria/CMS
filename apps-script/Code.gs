@@ -1,6 +1,10 @@
 const EMAIL_DESTINO = "daniel@apitcantabria.com";
 const SHEET_ID = "1J1T4vS736sotTVP9KgdSje0OxlBvFU_7alO4Mwap5YY";
-const ACCIONES_PERMITIDAS = ["incidencia", "nueva_resena_restaurante"];
+const ACCIONES_PERMITIDAS = [
+  "incidencia",
+  "nueva_resena_restaurante",
+  "confirmar_recurso",
+];
 
 function doPost(e) {
   try {
@@ -27,6 +31,9 @@ function doPost(e) {
     try {
       if (data.accion === "incidencia") {
         return guardarIncidencia(ss, data);
+      }
+      if (data.accion === "confirmar_recurso") {
+        return guardarConfirmacionRecurso(ss, data);
       }
       return guardarResenaRestaurante(ss, data);
     } finally {
@@ -124,6 +131,58 @@ function guardarResenaRestaurante(ss, data) {
   });
 
   return respuestaJSON(true, "");
+}
+
+function guardarConfirmacionRecurso(ss, data) {
+  const sheet = obtenerHoja(ss, "confirmaciones_recursos");
+  const fecha = new Date();
+  const registro = {
+    guia: campo(data.guia, "guia", 120, true),
+    recurso: campo(data.recurso, "recurso", 250, true),
+    recursoId: campo(data.recurso_id, "recurso_id", 100, false),
+    municipio: campo(data.municipio, "municipio", 150, false),
+    secciones: validarSecciones(data.secciones),
+    comentario: campo(data.comentario, "comentario", 1000, false),
+  };
+
+  sheet.appendRow([
+    fecha,
+    registro.guia,
+    registro.recurso,
+    registro.recursoId,
+    registro.municipio,
+    registro.secciones.join(", "),
+    registro.comentario,
+  ]);
+
+  return respuestaJSON(true, "");
+}
+
+function validarSecciones(value) {
+  const permitidas = [
+    "Toda la ficha",
+    "Horarios",
+    "Tarifas",
+    "Contacto",
+    "Información adicional",
+  ];
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new Error("Falta el campo obligatorio: secciones");
+  }
+
+  const secciones = [...new Set(value.map(function (item) {
+    return campo(item, "secciones", 80, true);
+  }))];
+
+  if (secciones.some(function (item) {
+    return !permitidas.includes(item);
+  })) {
+    throw new Error("Sección no permitida");
+  }
+  if (secciones.includes("Toda la ficha") && secciones.length > 1) {
+    throw new Error("Selección de secciones incompatible");
+  }
+  return secciones;
 }
 
 function obtenerHoja(ss, nombre) {

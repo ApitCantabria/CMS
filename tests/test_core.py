@@ -17,9 +17,14 @@ from cms.data import DataSourceError, load_all_sheets, normalize_lookup, prepare
 from cms.resources import (
     attach_restaurant_ratings,
     filter_resource_content,
+    latest_resource_confirmation,
     row_applies_on,
 )
-from cms.submissions import incidence_payload, restaurant_review_payload
+from cms.submissions import (
+    incidence_payload,
+    resource_confirmation_payload,
+    restaurant_review_payload,
+)
 
 
 class DataTests(unittest.TestCase):
@@ -102,6 +107,42 @@ class ResourceTests(unittest.TestCase):
         result = attach_restaurant_ratings(restaurants, reviews)
         self.assertEqual(result["rating_medio"].tolist(), [5.0, 3.0])
 
+    def test_latest_resource_confirmation_prefers_stable_id(self):
+        confirmations, _ = prepare_frame(
+            "confirmaciones_recursos",
+            pd.DataFrame([
+                {
+                    "recurso_id": "r1",
+                    "recurso": "Museo",
+                    "fecha": "01/07/2026",
+                    "guia": "Ana",
+                    "secciones": "Horarios",
+                },
+                {
+                    "recurso_id": "r1",
+                    "recurso": "Museo",
+                    "fecha": "20/07/2026",
+                    "guia": "Ana",
+                    "secciones": "Toda la ficha",
+                },
+                {
+                    "recurso_id": "r2",
+                    "recurso": "Museo",
+                    "fecha": "24/07/2026",
+                    "guia": "Luis",
+                    "secciones": "Tarifas",
+                },
+            ]),
+        )
+
+        latest = latest_resource_confirmation(
+            confirmations,
+            resource_id="r1",
+            resource_name="Museo",
+        )
+
+        self.assertEqual(latest.strftime("%d/%m/%Y"), "20/07/2026")
+
 
 class SubmissionTests(unittest.TestCase):
     def test_payloads_include_stable_ids_and_strip_text(self):
@@ -129,6 +170,18 @@ class SubmissionTests(unittest.TestCase):
         })
         self.assertEqual(review["restaurante_id"], "rest1")
         self.assertEqual(review["comentario"], "Bien")
+
+        confirmation = resource_confirmation_payload({
+            "recurso_id": " r1 ",
+            "recurso": " Museo ",
+            "municipio": " Santander ",
+            "guia": " Ana ",
+            "secciones": [" Horarios ", " Tarifas "],
+            "comentario": " Comprobado ",
+        })
+        self.assertEqual(confirmation["accion"], "confirmar_recurso")
+        self.assertEqual(confirmation["secciones"], ["Horarios", "Tarifas"])
+        self.assertEqual(confirmation["guia"], "Ana")
 
 
 if __name__ == "__main__":

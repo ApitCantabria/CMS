@@ -107,6 +107,26 @@ def filter_resource_content(
     return rows[rows.apply(lambda row: row_applies_on(row, selected_date), axis=1)]
 
 
+def latest_resource_confirmation(
+    confirmations: pd.DataFrame,
+    *,
+    resource_id,
+    resource_name,
+):
+    rows = related_rows(
+        confirmations,
+        id_column="recurso_id",
+        entity_id=resource_id,
+        name_column="recurso",
+        entity_name=resource_name,
+    )
+    if rows.empty or "fecha" not in rows.columns:
+        return None
+
+    dates = pd.to_datetime(rows["fecha"], dayfirst=True, errors="coerce").dropna()
+    return dates.max() if not dates.empty else None
+
+
 def attach_restaurant_ratings(
     restaurants: pd.DataFrame,
     reviews: pd.DataFrame,

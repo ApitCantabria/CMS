@@ -19,11 +19,13 @@ from cms.data import load_all_sheets
 from cms.resources import (
     attach_restaurant_ratings,
     filter_resource_content,
+    latest_resource_confirmation,
     related_rows,
 )
 from cms.submissions import (
     incidence_payload,
     post_action,
+    resource_confirmation_payload,
     restaurant_review_payload,
 )
 
@@ -119,8 +121,8 @@ def has_visible_content(value) -> bool:
 
 
 def render_html(markup: str) -> None:
-    """Prevent indented templates becoming visible Markdown code blocks."""
-    st.markdown(html(markup), unsafe_allow_html=True)
+    """Render trusted application markup without Markdown reinterpreting it."""
+    st.html(html(markup))
 
 
 def safe_key(texto: str) -> str:
@@ -176,6 +178,10 @@ def save_incidencia(data: dict):
 
 def save_resena_restaurante(data: dict):
     return post_to_apps_script(restaurant_review_payload(data))
+
+
+def save_confirmacion_recurso(data: dict):
+    return post_to_apps_script(resource_confirmation_payload(data))
 
 
 # ─────────────────────────────────────────────
@@ -272,9 +278,9 @@ def inject_css():
 
     .card-title {
         font-weight: 700;
-        font-size: 1rem;
+        font-size: 1.05rem;
         color: #1a2e40;
-        margin-bottom: 0.4rem;
+        margin-bottom: 0.3rem;
     }
 
     .badge {
@@ -299,30 +305,84 @@ def inject_css():
         color: #92400e;
     }
 
-    .bloque {
-        background: #f4f8fc;
-        border-left: 3px solid #0d7c9e;
-        border-radius: 0 8px 8px 0;
-        padding: 0.55rem 0.8rem;
-        margin-bottom: 0.45rem;
+    .resource-sections {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem 1.1rem;
+        margin-top: 0.75rem;
     }
 
-    .bloque-label {
-        font-size: 0.7rem;
-        font-weight: 600;
+    .resource-section {
+        min-width: 0;
+        border-top: 2px solid #d7e6ef;
+        padding-top: 0.45rem;
+    }
+
+    .resource-section-title {
         color: #0d7c9e;
+        font-size: 0.74rem;
+        font-weight: 700;
+        letter-spacing: 0.025em;
+        margin-bottom: 0.2rem;
         text-transform: uppercase;
     }
 
-    .bloque-subtipo {
-        font-weight: 600;
-        color: #1a2e40;
-        font-size: 0.87rem;
+    .detail-row {
+        display: grid;
+        grid-template-columns: minmax(5.5rem, 0.42fr) minmax(0, 0.58fr);
+        gap: 0.55rem;
+        padding: 0.3rem 0;
+        border-bottom: 1px solid #edf1f5;
     }
 
-    .bloque-contenido {
+    .detail-row:last-of-type {
+        border-bottom: 0;
+    }
+
+    .detail-label {
+        color: #1a2e40;
+        font-size: 0.82rem;
+        font-weight: 600;
+        overflow-wrap: anywhere;
+    }
+
+    .detail-value {
         color: #374151;
-        font-size: 0.87rem;
+        font-size: 0.84rem;
+        line-height: 1.35;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .detail-value a,
+    .section-source a,
+    .detail-source a {
+        color: #0369a1;
+        text-decoration: none;
+    }
+
+    .detail-value a:hover,
+    .section-source a:hover,
+    .detail-source a:hover {
+        text-decoration: underline;
+    }
+
+    .detail-source,
+    .section-source {
+        color: #8a94a3;
+        font-size: 0.7rem;
+        line-height: 1.3;
+    }
+
+    .detail-source {
+        display: block;
+        margin-top: 0.12rem;
+    }
+
+    .section-source {
+        border-top: 1px solid #edf1f5;
+        margin-top: 0.1rem;
+        padding-top: 0.3rem;
     }
 
     .reviews-title {
@@ -364,11 +424,27 @@ def inject_css():
         color: #78350f;
     }
 
+    .verification-status {
+        color: #39705a;
+        font-size: 0.74rem;
+        margin-top: 0.5rem;
+    }
+
     .no-results {
         text-align: center;
         color: #6b7280;
         padding: 1.5rem 1rem;
         font-size: 0.9rem;
+    }
+
+    @media (max-width: 640px) {
+        .resource-sections {
+            grid-template-columns: 1fr;
+        }
+
+        .detail-row {
+            grid-template-columns: minmax(5rem, 0.38fr) minmax(0, 0.62fr);
+        }
     }
     </style>
     """), unsafe_allow_html=True)
@@ -378,56 +454,135 @@ def inject_css():
 # BLOQUES VISUALES
 # ─────────────────────────────────────────────
 
-def build_bloque(bloque_tipo, subtipo, contenido, fuente):
-    if not has_visible_content(contenido):
+SECTION_TITLES = {
+    "horarios": "Horarios",
+    "tarifas": "Tarifas",
+    "contacto": "Contacto",
+    "informacion": "Información adicional",
+}
+
+
+def resource_section_key(bloque, subtipo="") -> str:
+    bloque_key = plain_text_content(bloque).casefold()
+    subtipo_key = plain_text_content(subtipo).casefold()
+
+    if "horario" in bloque_key:
+        return "horarios"
+    if "tarifa" in bloque_key:
+        return "tarifas"
+    if "contact" in bloque_key:
+        return "contacto"
+    if any(
+        term in subtipo_key
+        for term in ("teléfono", "telefono", "correo", "email", "persona de contacto", "web")
+    ):
+        return "contacto"
+    return "informacion"
+
+
+def linked_or_text(value) -> str:
+    """Return escaped visible text, linking it only when it is a safe full URL."""
+    text = plain_text_content(value)
+    if not text:
         return ""
 
-    fuente_html = (
-        f'<br><small style="color:#9ca3af">Fuente: {esc(plain_text_content(fuente))}</small>'
-        if has_visible_content(fuente) else ""
-    )
-
-    return (
-        '<div class="bloque">'
-        f'<div class="bloque-label">{esc(plain_text_content(bloque_tipo))}</div>'
-        f'<div class="bloque-subtipo">{esc(plain_text_content(subtipo))}</div>'
-        f'<div class="bloque-contenido">{esc_html_multiline(contenido)}{fuente_html}</div>'
-        '</div>'
-    )
+    safe_url = safe_external_url(text)
+    if safe_url:
+        return (
+            f'<a href="{esc(safe_url)}" target="_blank" '
+            f'rel="noopener noreferrer">{esc(text)}</a>'
+        )
+    return esc(text).replace("\n", "<br>")
 
 
-def build_bloques_contenido(contenido_fecha: pd.DataFrame) -> str:
-    """Render meaningful rows or a consistent empty-resource placeholder."""
-    bloques = []
+def source_html(source) -> str:
+    rendered = linked_or_text(source)
+    return f"Fuente: {rendered}" if rendered else ""
 
-    if not contenido_fecha.empty and "bloque" in contenido_fecha.columns:
+
+def build_resource_sections(contenido_fecha: pd.DataFrame, web="") -> str:
+    """Group safe, visible resource data into compact semantic sections."""
+    sections = {key: [] for key in SECTION_TITLES}
+
+    if not contenido_fecha.empty and "contenido" in contenido_fecha.columns:
         sort_cols = [
             col for col in ["prioridad", "bloque", "subtipo"]
             if col in contenido_fecha.columns
         ]
-        if sort_cols:
-            contenido_fecha = contenido_fecha.sort_values(
-                sort_cols,
-                na_position="last",
+        rows = (
+            contenido_fecha.sort_values(sort_cols, na_position="last")
+            if sort_cols else contenido_fecha
+        )
+
+        for _, row in rows.iterrows():
+            content = plain_text_content(row.get("contenido", ""))
+            if not content:
+                continue
+
+            block = plain_text_content(row.get("bloque", ""))
+            subtype = plain_text_content(row.get("subtipo", ""))
+            section_key = resource_section_key(block, subtype)
+
+            if section_key == "informacion" and block and subtype:
+                block_label = block[:1].upper() + block[1:]
+                label = f"{block_label} · {subtype}"
+            else:
+                label = subtype or block or "Información"
+
+            sections[section_key].append({
+                "label": label,
+                "value": content,
+                "source": plain_text_content(row.get("fuente", "")),
+            })
+
+    if has_visible_content(web):
+        sections["contacto"].append({
+            "label": "Web",
+            "value": plain_text_content(web),
+            "source": "",
+        })
+
+    rendered_sections = []
+    for section_key, title in SECTION_TITLES.items():
+        items = sections[section_key]
+        if not items:
+            continue
+
+        sources = [item["source"] for item in items]
+        shared_source = (
+            sources[0]
+            if sources and sources[0] and all(source == sources[0] for source in sources)
+            else ""
+        )
+
+        rendered_rows = []
+        for item in items:
+            item_source = ""
+            if item["source"] and not shared_source:
+                item_source = (
+                    f'<span class="detail-source">{source_html(item["source"])}</span>'
+                )
+            rendered_rows.append(
+                '<div class="detail-row">'
+                f'<div class="detail-label">{esc(item["label"])}</div>'
+                f'<div class="detail-value">{linked_or_text(item["value"])}{item_source}</div>'
+                '</div>'
             )
 
-        for bloque_tipo, grupo in contenido_fecha.groupby(
-            "bloque",
-            sort=False,
-            dropna=False,
-        ):
-            for _, fila in grupo.iterrows():
-                bloque = build_bloque(
-                    bloque_tipo,
-                    fila.get("subtipo", ""),
-                    fila.get("contenido", ""),
-                    fila.get("fuente", ""),
-                )
-                if bloque:
-                    bloques.append(bloque)
+        section_source = (
+            f'<div class="section-source">{source_html(shared_source)}</div>'
+            if shared_source else ""
+        )
+        rendered_sections.append(
+            '<section class="resource-section">'
+            f'<div class="resource-section-title">{esc(title)}</div>'
+            f'{"".join(rendered_rows)}'
+            f'{section_source}'
+            '</section>'
+        )
 
-    if bloques:
-        return "".join(bloques)
+    if rendered_sections:
+        return f'<div class="resource-sections">{"".join(rendered_sections)}</div>'
 
     return (
         '<div class="no-results">'
@@ -436,23 +591,37 @@ def build_bloques_contenido(contenido_fecha: pd.DataFrame) -> str:
     )
 
 
+def confirmation_section_options(contenido_fecha: pd.DataFrame, web="") -> list[str]:
+    keys = set()
+    if not contenido_fecha.empty and "contenido" in contenido_fecha.columns:
+        for _, row in contenido_fecha.iterrows():
+            if has_visible_content(row.get("contenido", "")):
+                keys.add(
+                    resource_section_key(
+                        row.get("bloque", ""),
+                        row.get("subtipo", ""),
+                    )
+                )
+    if has_visible_content(web):
+        keys.add("contacto")
+    return [
+        title
+        for key, title in SECTION_TITLES.items()
+        if key in keys
+    ]
+
+
 def tiene_contenido_visible(contenido_fecha: pd.DataFrame) -> bool:
     if contenido_fecha.empty or "contenido" not in contenido_fecha.columns:
         return False
     return contenido_fecha["contenido"].map(has_visible_content).any()
 
 
-def build_disclaimer(web, ultima_act):
-    web_link = ""
-    safe_web = safe_external_url(web)
-
-    if safe_web:
-        web_link = f' · <a href="{esc(safe_web)}" target="_blank" rel="noopener noreferrer">Web oficial</a>'
-
+def build_disclaimer(ultima_act):
     if pd.notna(ultima_act) and ultima_act:
         try:
             fecha_act = pd.to_datetime(ultima_act).strftime("%d/%m/%Y")
-            act_str = f" · Última actualización: <strong>{fecha_act}</strong>"
+            act_str = f' Última actualización: <strong>{fecha_act}</strong>'
         except Exception:
             act_str = ""
     else:
@@ -460,9 +629,8 @@ def build_disclaimer(web, ultima_act):
 
     return (
         '<div class="disclaimer">'
-        '<strong>Aviso:</strong> La información puede estar desactualizada. '
-        'Aquí tienes la fuente original por si quieres cotejarla y verificar su vigencia antes de utilizarla.'
-        f'{web_link}{act_str}'
+        '<strong>Aviso:</strong> La información puede haber cambiado.'
+        f'{act_str}'
         '</div>'
     )
 
@@ -544,6 +712,67 @@ def formulario_incidencia(
 
                     st.success("¡Gracias! Hemos recibido tu aviso y APIT Cantabria lo revisará.")
 
+                except Exception:
+                    mensaje_error_envio()
+
+
+def formulario_confirmacion_recurso(
+    nombre,
+    municipio,
+    entidad_id,
+    secciones_disponibles,
+    item_key="",
+):
+    form_key = "form_confirmacion_" + "_".join(
+        safe_key(part)
+        for part in [municipio, nombre, entidad_id, item_key]
+        if str(part).strip()
+    )
+    opciones = ["Toda la ficha", *secciones_disponibles]
+
+    with st.expander("✓ Confirmar que los datos siguen vigentes", expanded=False):
+        with st.form(form_key):
+            guia = st.text_input(
+                "Tu nombre",
+                placeholder="Escribe tu nombre y apellidos",
+                key=f"guia_{form_key}",
+            )
+            secciones = st.multiselect(
+                "¿Qué has comprobado?",
+                opciones,
+                key=f"secciones_{form_key}",
+            )
+            comentario = st.text_area(
+                "¿Quieres añadir algún comentario? (opcional)",
+                placeholder="Por ejemplo: tarifas confirmadas directamente en taquilla.",
+                key=f"comentario_{form_key}",
+            )
+            enviar = st.form_submit_button("Confirmar datos")
+
+            if enviar:
+                if not guia.strip():
+                    st.warning("Necesitamos tu nombre para registrar la comprobación.")
+                    return
+                if not secciones:
+                    st.warning("Indica qué información has comprobado.")
+                    return
+                if "Toda la ficha" in secciones and len(secciones) > 1:
+                    st.warning(
+                        "Elige “Toda la ficha” o secciones concretas, pero no ambas."
+                    )
+                    return
+
+                try:
+                    save_confirmacion_recurso({
+                        "recurso": nombre,
+                        "recurso_id": entidad_id,
+                        "municipio": municipio,
+                        "guia": guia,
+                        "secciones": secciones,
+                        "comentario": comentario,
+                    })
+                    st.cache_data.clear()
+                    st.success("¡Gracias! Hemos registrado tu comprobación.")
                 except Exception:
                     mensaje_error_envio()
 
@@ -735,6 +964,7 @@ def formulario_nueva_resena_restaurante(
 def modulo_recursos(dfs):
     recursos_df = dfs["recursos"]
     contenidos_df = dfs["contenidos_recursos"]
+    confirmaciones_df = dfs.get("confirmaciones_recursos", pd.DataFrame())
 
     hoy = date.today()
     fecha_max = add_years_safe(hoy, 2)
@@ -807,7 +1037,6 @@ def modulo_recursos(dfs):
         nombre = rec["recurso"]
         recurso_id = rec.get("recurso_id", "")
         municipio = rec.get("municipio", "")
-        tipo_rec = rec.get("tipo", "")
         web = rec.get("web_oficial", "")
         ultima_act = rec.get("ultima_actualizacion", None)
 
@@ -819,19 +1048,45 @@ def modulo_recursos(dfs):
         )
 
         contenido_disponible = tiene_contenido_visible(contenido_fecha)
-        bloques_html = build_bloques_contenido(contenido_fecha)
+        bloques_html = build_resource_sections(contenido_fecha, web)
+        ultima_confirmacion = latest_resource_confirmation(
+            confirmaciones_df,
+            resource_id=recurso_id,
+            resource_name=nombre,
+        )
+        confirmacion_html = ""
+        if ultima_confirmacion is not None:
+            fecha_confirmacion = ultima_confirmacion.strftime("%d/%m/%Y")
+            confirmacion_html = (
+                '<div class="verification-status">'
+                '✓ Última comprobación por un guía: '
+                f'<strong>{esc(fecha_confirmacion)}</strong>'
+                '</div>'
+            )
 
         render_html(f"""
         <div class="card">
             <div class="card-title">🏛️ {esc(nombre)}</div>
             <div>
                 <span class="badge">{esc(municipio)}</span>
-                <span class="badge badge-amber">{esc(tipo_rec)}</span>
             </div>
             {bloques_html}
-            {build_disclaimer(web, ultima_act) if contenido_disponible else ""}
+            {confirmacion_html}
+            {build_disclaimer(ultima_act) if contenido_disponible else ""}
         </div>
         """)
+
+        if contenido_disponible:
+            formulario_confirmacion_recurso(
+                nombre=nombre,
+                municipio=municipio,
+                entidad_id=recurso_id,
+                secciones_disponibles=confirmation_section_options(
+                    contenido_fecha,
+                    web,
+                ),
+                item_key=idx,
+            )
 
         formulario_incidencia(
             tipo="recurso",

@@ -47,3 +47,15 @@ def restaurant_review_payload(data: dict) -> dict:
         "rating": int(data["rating"]),
         "comentario": data["comentario"].strip(),
     }
+
+
+def resource_confirmation_payload(data: dict) -> dict:
+    return {
+        "accion": "confirmar_recurso",
+        "recurso_id": str(data.get("recurso_id", "")).strip(),
+        "recurso": data["recurso"].strip(),
+        "municipio": str(data.get("municipio", "")).strip(),
+        "guia": data["guia"].strip(),
+        "secciones": [str(value).strip() for value in data["secciones"] if str(value).strip()],
+        "comentario": str(data.get("comentario", "")).strip(),
+    }

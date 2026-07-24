@@ -31,6 +31,15 @@ Campos: `restaurante_id`, `restaurante`, `fecha`, `guia`, `num_personas`,
 Durante la migración, `restaurante_id` puede estar vacío. Después de
 completarla, el Apps Script debería exigirlo.
 
+## Acción `confirmar_recurso`
+
+Campos: `recurso_id`, `recurso`, `municipio`, `guia`, `secciones` y
+`comentario`.
+
+`secciones` es una lista con `Toda la ficha`, `Horarios`, `Tarifas`,
+`Contacto` o `Información adicional`. Esta acción añade una entrada al
+historial de `confirmaciones_recursos`; no modifica el contenido publicado.
+
 ## Respuesta
 
 Éxito:

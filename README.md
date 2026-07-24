@@ -25,6 +25,9 @@ Las lecturas usan la exportación CSV de Google Sheets. Las escrituras se
 envían a un Google Apps Script externo mediante HTTPS y un token guardado
 en secretos de Streamlit.
 
+Las comprobaciones de vigencia se guardan como historial en la pestaña
+`confirmaciones_recursos`; no sobrescriben la información del recurso.
+
 ## Identificadores y migración
 
 Se recomienda añadir estas columnas:
