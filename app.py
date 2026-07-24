@@ -38,7 +38,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-SELECT_MUNICIPIO = "Seleccione un municipio..."
+SELECT_MUNICIPIO = "Elige un municipio..."
 TODOS_MUNICIPIOS = "Todos"
 TODOS_RECURSOS = "Todos"
 
@@ -431,9 +431,15 @@ def build_bloques_contenido(contenido_fecha: pd.DataFrame) -> str:
 
     return (
         '<div class="no-results">'
-        'No hay contenido disponible todavía.'
+        'Todavía no tenemos información sobre este recurso.'
         '</div>'
     )
+
+
+def tiene_contenido_visible(contenido_fecha: pd.DataFrame) -> bool:
+    if contenido_fecha.empty or "contenido" not in contenido_fecha.columns:
+        return False
+    return contenido_fecha["contenido"].map(has_visible_content).any()
 
 
 def build_disclaimer(web, ultima_act):
@@ -454,8 +460,8 @@ def build_disclaimer(web, ultima_act):
 
     return (
         '<div class="disclaimer">'
-        '<strong>Aviso:</strong> La información puede estar desactualizada. '
-        'Contrástela con la fuente oficial antes de utilizarla.'
+        '<strong>Ten en cuenta:</strong> estos datos pueden haber cambiado. '
+        'Échales un vistazo en la fuente oficial antes de usarlos.'
         f'{web_link}{act_str}'
         '</div>'
     )
@@ -480,8 +486,8 @@ def build_resena(r_stars, guia, fecha_str, n_p, comentario):
 
 def mensaje_error_envio():
     st.error(
-        "No ha sido posible enviar la información. "
-        "Inténtelo de nuevo más tarde o contacte con APIT Cantabria."
+        "No hemos podido enviarlo. Prueba de nuevo dentro de un rato "
+        "o ponte en contacto con APIT Cantabria."
     )
 
 
@@ -498,30 +504,30 @@ def formulario_incidencia(
         safe_key(part) for part in key_parts if str(part).strip()
     )
 
-    with st.expander("Reportar dato incorrecto", expanded=False):
+    with st.expander("¿Ves algún dato incorrecto?", expanded=False):
         with st.form(form_key):
 
             guia = st.text_input(
                 "Nombre del guía",
-                placeholder="Nombre y apellidos",
+                placeholder="Escribe tu nombre y apellidos",
                 key=f"guia_{form_key}",
             )
 
             descripcion = st.text_area(
-                "¿Qué dato es incorrecto o falta?",
-                placeholder="Indique brevemente qué información debe corregirse o completarse.",
+                "Cuéntanos qué dato falta o habría que corregir",
+                placeholder="Explícanos brevemente qué has visto.",
                 key=f"descripcion_{form_key}",
             )
 
-            enviar = st.form_submit_button("Enviar")
+            enviar = st.form_submit_button("Enviar aviso")
 
             if enviar:
                 if not guia.strip():
-                    st.warning("Indique su nombre.")
+                    st.warning("Necesitamos tu nombre para enviar el aviso.")
                     return
 
                 if not descripcion.strip():
-                    st.warning("Describa brevemente el problema.")
+                    st.warning("Cuéntanos brevemente qué habría que revisar.")
                     return
 
                 try:
@@ -536,34 +542,37 @@ def formulario_incidencia(
                         "descripcion": descripcion,
                     })
 
-                    st.success("Gracias. La información ha sido registrada y será revisada por APIT Cantabria.")
+                    st.success("¡Gracias! Hemos recibido tu aviso y APIT Cantabria lo revisará.")
 
                 except Exception:
                     mensaje_error_envio()
 
 
 def formulario_nuevo_recurso():
-    with st.expander("Proponer nuevo recurso turístico", expanded=False):
+    with st.expander("¿Falta algún recurso turístico?", expanded=False):
         with st.form("form_nuevo_recurso"):
 
-            guia = st.text_input("Nombre del guía", placeholder="Nombre y apellidos")
+            guia = st.text_input(
+                "Nombre del guía",
+                placeholder="Escribe tu nombre y apellidos",
+            )
             nombre = st.text_input("Nombre del recurso")
             municipio = st.text_input("Municipio")
 
             descripcion = st.text_area(
-                "Información básica",
-                placeholder="Indique web oficial, horarios, datos útiles o motivo por el que debería añadirse."
+                "Cuéntanos un poco más",
+                placeholder="Puedes añadir su web, horarios o cualquier dato que nos ayude."
             )
 
-            enviar = st.form_submit_button("Enviar")
+            enviar = st.form_submit_button("Enviar propuesta")
 
             if enviar:
                 if not guia.strip():
-                    st.warning("Indique su nombre.")
+                    st.warning("Necesitamos tu nombre para enviar la propuesta.")
                     return
 
                 if not nombre.strip():
-                    st.warning("El nombre del recurso es obligatorio.")
+                    st.warning("Escribe el nombre del recurso.")
                     return
 
                 try:
@@ -577,34 +586,37 @@ def formulario_nuevo_recurso():
                         "descripcion": descripcion,
                     })
 
-                    st.success("Gracias. La propuesta ha sido registrada y será revisada por APIT Cantabria.")
+                    st.success("¡Gracias! Hemos recibido tu propuesta y APIT Cantabria la revisará.")
 
                 except Exception:
                     mensaje_error_envio()
 
 
 def formulario_nuevo_restaurante():
-    with st.expander("Proponer nuevo restaurante", expanded=False):
+    with st.expander("¿Falta algún restaurante?", expanded=False):
         with st.form("form_nuevo_restaurante"):
 
-            guia = st.text_input("Nombre del guía", placeholder="Nombre y apellidos")
+            guia = st.text_input(
+                "Nombre del guía",
+                placeholder="Escribe tu nombre y apellidos",
+            )
             nombre = st.text_input("Nombre del restaurante")
             municipio = st.text_input("Municipio")
 
             descripcion = st.text_area(
-                "Información básica",
-                placeholder="Indique si admite grupos, precio aproximado, experiencia con grupos o cualquier dato útil."
+                "Cuéntanos un poco más",
+                placeholder="Por ejemplo: grupos, precio aproximado o tu experiencia."
             )
 
-            enviar = st.form_submit_button("Enviar")
+            enviar = st.form_submit_button("Enviar propuesta")
 
             if enviar:
                 if not guia.strip():
-                    st.warning("Indique su nombre.")
+                    st.warning("Necesitamos tu nombre para enviar la propuesta.")
                     return
 
                 if not nombre.strip():
-                    st.warning("El nombre del restaurante es obligatorio.")
+                    st.warning("Escribe el nombre del restaurante.")
                     return
 
                 try:
@@ -618,7 +630,7 @@ def formulario_nuevo_restaurante():
                         "descripcion": descripcion,
                     })
 
-                    st.success("Gracias. La propuesta ha sido registrada y será revisada por APIT Cantabria.")
+                    st.success("¡Gracias! Hemos recibido tu propuesta y APIT Cantabria la revisará.")
 
                 except Exception:
                     mensaje_error_envio()
@@ -635,12 +647,12 @@ def formulario_nueva_resena_restaurante(
         safe_key(part) for part in key_parts if str(part).strip()
     )
 
-    with st.expander("Añadir reseña", expanded=False):
+    with st.expander("Comparte tu experiencia", expanded=False):
         with st.form(form_key):
 
             guia = st.text_input(
                 "Nombre del guía",
-                placeholder="Nombre y apellidos",
+                placeholder="Escribe tu nombre y apellidos",
                 key=f"guia_{form_key}",
             )
 
@@ -667,7 +679,7 @@ def formulario_nueva_resena_restaurante(
             valoracion = st.selectbox(
                 "Valoración",
                 [
-                    "Seleccione...",
+                    "Elige una valoración...",
                     "⭐",
                     "⭐⭐",
                     "⭐⭐⭐",
@@ -679,23 +691,23 @@ def formulario_nueva_resena_restaurante(
 
             comentario = st.text_area(
                 "Comentario",
-                placeholder="Breve valoración de la experiencia.",
+                placeholder="Cuéntanos brevemente cómo fue la experiencia.",
                 key=f"comentario_{form_key}",
             )
 
-            enviar = st.form_submit_button("Guardar reseña")
+            enviar = st.form_submit_button("Publicar reseña")
 
             if enviar:
                 if not guia.strip():
-                    st.warning("Indique su nombre.")
+                    st.warning("Necesitamos tu nombre para publicar la reseña.")
                     return
 
-                if valoracion == "Seleccione...":
-                    st.warning("Seleccione una valoración.")
+                if valoracion == "Elige una valoración...":
+                    st.warning("Elige una valoración.")
                     return
 
                 if not comentario.strip():
-                    st.warning("El comentario es obligatorio.")
+                    st.warning("Añade un comentario breve sobre tu experiencia.")
                     return
 
                 try:
@@ -710,7 +722,7 @@ def formulario_nueva_resena_restaurante(
                         "comentario": comentario,
                     })
 
-                    st.success("Gracias. La reseña ha sido registrada.")
+                    st.success("¡Gracias! Tu reseña ya está guardada.")
                     st.cache_data.clear()
 
                 except Exception:
@@ -731,7 +743,7 @@ def modulo_recursos(dfs):
 
     with col_fecha:
         fecha_sel = st.date_input(
-            "Consultar fecha",
+            "¿Para qué fecha?",
             value=hoy,
             min_value=hoy,
             max_value=fecha_max,
@@ -747,7 +759,7 @@ def modulo_recursos(dfs):
 
     if muni == SELECT_MUNICIPIO:
         st.markdown(
-            '<div class="no-results">Seleccione un municipio para consultar los recursos disponibles.</div>',
+            '<div class="no-results">Elige un municipio para ver sus recursos.</div>',
             unsafe_allow_html=True,
         )
         return
@@ -762,9 +774,9 @@ def modulo_recursos(dfs):
 
     if df_fil.empty:
         mensaje = (
-            "No hay recursos registrados."
+            "Todavía no hay recursos guardados."
             if muni == TODOS_MUNICIPIOS
-            else "No hay recursos registrados para el municipio seleccionado."
+            else "Todavía no tenemos recursos de este municipio."
         )
         st.markdown(f'<div class="no-results">{mensaje}</div>', unsafe_allow_html=True)
         return
@@ -784,12 +796,12 @@ def modulo_recursos(dfs):
 
     if df_fil.empty:
         st.markdown(
-            '<div class="no-results">No hay información para el recurso seleccionado.</div>',
+            '<div class="no-results">No hemos encontrado ese recurso.</div>',
             unsafe_allow_html=True,
         )
         return
 
-    st.markdown(f"**{len(df_fil)} recurso(s) encontrado(s)**")
+    st.markdown(f"**Hemos encontrado {len(df_fil)} recurso(s)**")
 
     for idx, rec in df_fil.iterrows():
         nombre = rec["recurso"]
@@ -806,6 +818,7 @@ def modulo_recursos(dfs):
             recurso_id,
         )
 
+        contenido_disponible = tiene_contenido_visible(contenido_fecha)
         bloques_html = build_bloques_contenido(contenido_fecha)
 
         render_html(f"""
@@ -816,7 +829,7 @@ def modulo_recursos(dfs):
                 <span class="badge badge-amber">{esc(tipo_rec)}</span>
             </div>
             {bloques_html}
-            {build_disclaimer(web, ultima_act)}
+            {build_disclaimer(web, ultima_act) if contenido_disponible else ""}
         </div>
         """)
 
@@ -849,7 +862,7 @@ def modulo_restaurantes(dfs):
     formulario_nuevo_restaurante()
 
     if muni == SELECT_MUNICIPIO:
-        st.info("Seleccione un municipio para consultar los restaurantes disponibles.")
+        st.info("Elige un municipio para ver sus restaurantes.")
         return
 
     df_fil = rest_df.copy()
@@ -865,12 +878,12 @@ def modulo_restaurantes(dfs):
 
     if df_fil.empty:
         if muni == TODOS_MUNICIPIOS:
-            st.info("No hay restaurantes registrados.")
+            st.info("Todavía no hay restaurantes guardados.")
         else:
-            st.info("No hay restaurantes registrados para el municipio seleccionado.")
+            st.info("Todavía no tenemos restaurantes de este municipio.")
         return
 
-    st.markdown(f"**{len(df_fil)} restaurante(s) encontrado(s)**")
+    st.markdown(f"**Hemos encontrado {len(df_fil)} restaurante(s)**")
 
     for _, row in df_fil.iterrows():
         nombre = row["restaurante"]
@@ -922,7 +935,7 @@ def modulo_restaurantes(dfs):
         if resenas.empty:
             resenas_html = (
                 '<div class="reviews-title">Experiencias</div>'
-                '<small style="color:#6b7280">Sin reseñas registradas.</small>'
+                '<small style="color:#6b7280">Todavía no hay reseñas.</small>'
             )
         else:
             resenas_html = '<div class="reviews-title">Últimas experiencias</div>'
@@ -983,7 +996,7 @@ def render_header():
         unsafe_allow_html=True,
     )
 
-    if st.button("Actualizar datos", key="refresh_header"):
+    if st.button("Actualizar información", key="refresh_header"):
         st.cache_data.clear()
         st.rerun()
 
@@ -1001,8 +1014,8 @@ def main():
     except Exception:
         logger.exception("Fallo inesperado durante la carga de datos")
         st.error(
-            "No ha sido posible cargar la información. "
-            "Inténtelo de nuevo más tarde o contacte con APIT Cantabria."
+            "No hemos podido cargar la información. Prueba de nuevo dentro "
+            "de un rato o ponte en contacto con APIT Cantabria."
         )
         return
 
@@ -1021,8 +1034,8 @@ def main():
         missing = {"recursos", "contenidos_recursos"} - set(dfs)
         if missing:
             st.error(
-                "No se puede mostrar esta sección porque no se han podido "
-                f"cargar estas hojas: {', '.join(sorted(missing))}."
+                "Ahora mismo no podemos mostrar esta sección porque faltan "
+                f"estos datos: {', '.join(sorted(missing))}."
             )
         else:
             modulo_recursos(dfs)
@@ -1035,8 +1048,8 @@ def main():
         missing = {"restaurantes", "experiencias_restaurantes"} - set(dfs)
         if missing:
             st.error(
-                "No se puede mostrar esta sección porque no se han podido "
-                f"cargar estas hojas: {', '.join(sorted(missing))}."
+                "Ahora mismo no podemos mostrar esta sección porque faltan "
+                f"estos datos: {', '.join(sorted(missing))}."
             )
         else:
             modulo_restaurantes(dfs)

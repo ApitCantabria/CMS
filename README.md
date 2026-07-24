@@ -18,6 +18,7 @@ experiencias almacenados en Google Sheets.
 - `cms/data.py`: descarga CSV, validación, normalización y carga aislada.
 - `cms/resources.py`: relaciones, reglas de fecha y valoraciones.
 - `cms/submissions.py`: contrato de escritura con Google Apps Script.
+- `apps-script/Code.gs`: código fuente versionado del endpoint desplegado.
 - `tests/`: pruebas unitarias de las reglas independientes de la interfaz.
 
 Las lecturas usan la exportación CSV de Google Sheets. Las escrituras se
