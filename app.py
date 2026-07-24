@@ -460,8 +460,8 @@ def build_disclaimer(web, ultima_act):
 
     return (
         '<div class="disclaimer">'
-        '<strong>Ten en cuenta:</strong> estos datos pueden haber cambiado. '
-        'Échales un vistazo en la fuente oficial antes de usarlos.'
+        '<strong>Aviso:</strong> La información puede estar desactualizada. '
+        'Aquí tienes la fuente original por si quieres cotejarla y verificar su vigencia antes de utilizarla.'
         f'{web_link}{act_str}'
         '</div>'
     )
@@ -504,7 +504,7 @@ def formulario_incidencia(
         safe_key(part) for part in key_parts if str(part).strip()
     )
 
-    with st.expander("¿Ves algún dato incorrecto?", expanded=False):
+    with st.expander("Reportar dato incorrecto", expanded=False):
         with st.form(form_key):
 
             guia = st.text_input(
@@ -549,7 +549,7 @@ def formulario_incidencia(
 
 
 def formulario_nuevo_recurso():
-    with st.expander("¿Falta algún recurso turístico?", expanded=False):
+    with st.expander("Proponer un nuevo recurso turístico", expanded=False):
         with st.form("form_nuevo_recurso"):
 
             guia = st.text_input(
@@ -801,7 +801,7 @@ def modulo_recursos(dfs):
         )
         return
 
-    st.markdown(f"**Hemos encontrado {len(df_fil)} recurso(s)**")
+    st.markdown(f"**{len(df_fil)} recurso(s) encontrado(s).**")
 
     for idx, rec in df_fil.iterrows():
         nombre = rec["recurso"]
