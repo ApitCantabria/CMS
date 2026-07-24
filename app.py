@@ -15,7 +15,7 @@ from html.parser import HTMLParser
 from urllib.parse import urlparse
 
 from cms.config import SHEET_URLS
-from cms.data import load_all_sheets
+from cms.data import load_all_sheets, normalize_lookup
 from cms.resources import (
     attach_restaurant_ratings,
     filter_resource_content,
@@ -523,11 +523,22 @@ def build_resource_sections(contenido_fecha: pd.DataFrame, web="") -> str:
             subtype = plain_text_content(row.get("subtipo", ""))
             section_key = resource_section_key(block, subtype)
 
-            if section_key == "informacion" and block and subtype:
+            generic_information_block = normalize_lookup(block) in {
+                "informacion",
+                "informacion adicional",
+            }
+            if (
+                section_key == "informacion"
+                and block
+                and subtype
+                and not generic_information_block
+            ):
                 block_label = block[:1].upper() + block[1:]
                 label = f"{block_label} · {subtype}"
             else:
-                label = subtype or block or "Información"
+                label = subtype or (
+                    "Detalle" if generic_information_block else block
+                ) or "Detalle"
 
             sections[section_key].append({
                 "label": label,
@@ -673,7 +684,7 @@ def formulario_incidencia(
     )
 
     with st.expander(
-        "Reportar un dato incorrecto o añadir información que falta",
+        "Corrige un dato o añade información",
         expanded=False,
     ):
         with st.form(form_key):
@@ -733,7 +744,7 @@ def formulario_confirmacion_recurso(
     )
     opciones = ["Toda la ficha", *secciones_disponibles]
 
-    with st.expander("✓ Confirmar que los datos siguen vigentes", expanded=False):
+    with st.expander("✓ Confirma que los datos siguen vigentes", expanded=False):
         with st.form(form_key):
             guia = st.text_input(
                 "Tu nombre",

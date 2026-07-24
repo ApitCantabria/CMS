@@ -102,5 +102,21 @@ class ResourceCardTests(unittest.TestCase):
         self.assertIn("resource-section-title\">Contacto", markup)
         self.assertIn('href="https://example.com"', markup)
 
+    def test_does_not_repeat_generic_information_in_additional_section(self):
+        rows = pd.DataFrame([
+            {
+                "bloque": "información",
+                "subtipo": "Servicios",
+                "contenido": "Exposición permanente",
+                "fuente": "Fuente oficial",
+            },
+        ])
+
+        markup = build_resource_sections(rows)
+
+        self.assertIn("resource-section-title\">Información adicional", markup)
+        self.assertIn("detail-label\">Servicios", markup)
+        self.assertNotIn("Información · Servicios", markup)
+
 if __name__ == "__main__":
     unittest.main()
