@@ -46,6 +46,28 @@ class ResourceCardTests(unittest.TestCase):
         self.assertIn("General", markup)
         self.assertIn("Reducida", markup)
 
+    def test_places_school_information_in_its_own_section(self):
+        rows = pd.DataFrame([
+            {
+                "bloque": "escolares",
+                "subtipo": "Infantil y Primaria",
+                "contenido": "3 € por estudiante",
+                "fuente": "Programa escolar",
+            },
+            {
+                "bloque": "tarifa",
+                "subtipo": "Grupo",
+                "contenido": "5 € por persona",
+                "fuente": "Tarifas de grupos",
+            },
+        ])
+
+        markup = build_resource_sections(rows)
+
+        self.assertIn('resource-section-title">Escolares', markup)
+        self.assertIn('resource-section-title">Tarifas', markup)
+        self.assertIn("Infantil y Primaria", markup)
+
     def test_strips_html_hides_empty_rows_and_links_safe_urls(self):
         rows = pd.DataFrame([
             {

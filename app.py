@@ -457,6 +457,7 @@ def inject_css():
 SECTION_TITLES = {
     "horarios": "Horarios",
     "tarifas": "Tarifas",
+    "escolares": "Escolares",
     "contacto": "Contacto",
     "informacion": "Información adicional",
 }
@@ -468,6 +469,8 @@ def resource_section_key(bloque, subtipo="") -> str:
 
     if "horario" in bloque_key:
         return "horarios"
+    if "escolar" in bloque_key:
+        return "escolares"
     if "tarifa" in bloque_key:
         return "tarifas"
     if "contact" in bloque_key:
