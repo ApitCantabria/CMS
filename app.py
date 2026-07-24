@@ -7,13 +7,29 @@ Formularios internos + Google Apps Script + Google Sheets
 import streamlit as st
 import pandas as pd
 from datetime import date
-from io import StringIO
 import textwrap
-import requests
 import re
 import html as html_lib
+import logging
+from html.parser import HTMLParser
 from urllib.parse import urlparse
 
+from cms.config import SHEET_URLS
+from cms.data import load_all_sheets
+from cms.resources import (
+    attach_restaurant_ratings,
+    filter_resource_content,
+    related_rows,
+)
+from cms.submissions import (
+    incidence_payload,
+    post_action,
+    restaurant_review_payload,
+)
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 st.set_page_config(
     page_title="AppitCant",
@@ -22,23 +38,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-SHEET_ID = "1J1T4vS736sotTVP9KgdSje0OxlBvFU_7alO4Mwap5YY"
-
-URLS = {
-    "recursos": f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=recursos",
-    "contenidos_recursos": f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=contenidos-recursos",
-    "restaurantes": f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=restaurantes",
-    "experiencias_restaurantes": f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=experiencias_restaurantes",
-}
-
-REQUIRED_COLUMNS = {
-    "recursos": {"recurso", "municipio"},
-    "contenidos_recursos": {"recurso"},
-    "restaurantes": {"restaurante", "municipio"},
-    "experiencias_restaurantes": {"restaurante"},
-}
-
-TRUE_VALUES = {"true", "verdadero", "si", "sí", "yes", "1", "x"}
 SELECT_MUNICIPIO = "Seleccione un municipio..."
 TODOS_MUNICIPIOS = "Todos"
 TODOS_RECURSOS = "Todos"
@@ -53,13 +52,75 @@ def html(s: str) -> str:
 
 
 def esc_html_multiline(value) -> str:
-    return esc(value).replace("\n", "<br>")
+    return esc(plain_text_content(value)).replace("\n", "<br>")
     
 
 def esc(value) -> str:
     if pd.isna(value):
         return ""
     return html_lib.escape(str(value))
+
+
+class _VisibleTextParser(HTMLParser):
+    """Extract visible text without passing source HTML to the UI."""
+
+    BLOCK_TAGS = {
+        "address", "article", "aside", "blockquote", "br", "div", "footer",
+        "h1", "h2", "h3", "h4", "h5", "h6", "header", "li", "main", "p",
+        "section", "tr",
+    }
+    IGNORED_TAGS = {"script", "style"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+        self.ignored_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self.IGNORED_TAGS:
+            self.ignored_depth += 1
+        elif not self.ignored_depth and tag in self.BLOCK_TAGS:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag):
+        if tag in self.IGNORED_TAGS:
+            self.ignored_depth = max(0, self.ignored_depth - 1)
+        elif not self.ignored_depth and tag in self.BLOCK_TAGS:
+            self.parts.append("\n")
+
+    def handle_data(self, data):
+        if not self.ignored_depth:
+            self.parts.append(data)
+
+
+def plain_text_content(value) -> str:
+    """Normalize plain/rich text into safe visible text."""
+    if pd.isna(value):
+        return ""
+
+    raw = str(value).strip()
+    if not raw:
+        return ""
+
+    parser = _VisibleTextParser()
+    try:
+        parser.feed(raw)
+        parser.close()
+        text = "".join(parser.parts)
+    except Exception:
+        text = raw
+
+    lines = [re.sub(r"\s+", " ", line).strip() for line in text.splitlines()]
+    return "\n".join(line for line in lines if line)
+
+
+def has_visible_content(value) -> bool:
+    return bool(plain_text_content(value))
+
+
+def render_html(markup: str) -> None:
+    """Prevent indented templates becoming visible Markdown code blocks."""
+    st.markdown(html(markup), unsafe_allow_html=True)
 
 
 def safe_key(texto: str) -> str:
@@ -81,46 +142,11 @@ def safe_external_url(value) -> str:
     return url
 
 
-def normalize_bool(value) -> bool:
-    if pd.isna(value):
-        return False
-
-    if isinstance(value, bool):
-        return value
-
-    return str(value).strip().lower() in TRUE_VALUES
-
-
-def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    df.columns = (
-        df.columns
-        .str.strip()
-        .str.lower()
-        .str.replace(" ", "_", regex=False)
-    )
-    return df
-
-
-def validate_columns(name: str, df: pd.DataFrame) -> None:
-    missing = REQUIRED_COLUMNS.get(name, set()) - set(df.columns)
-
-    if missing:
-        missing_str = ", ".join(sorted(missing))
-        raise ValueError(f"La hoja '{name}' no contiene estas columnas: {missing_str}")
-
-
 def add_years_safe(value: date, years: int) -> date:
     try:
         return date(value.year + years, value.month, value.day)
     except ValueError:
         return date(value.year + years, value.month, 28)
-
-
-def read_remote_csv(url: str) -> pd.DataFrame:
-    response = requests.get(url, timeout=10)
-    response.raise_for_status()
-    return pd.read_csv(StringIO(response.text))
 
 
 def normalize_rating(value) -> int:
@@ -132,105 +158,24 @@ def normalize_rating(value) -> int:
     return max(0, min(5, int(round(rating))))
 
 
-def normalize_day_name(value: str) -> str:
-    replacements = {
-        "á": "a",
-        "é": "e",
-        "í": "i",
-        "ó": "o",
-        "ú": "u",
-        "ü": "u",
-    }
-    text = str(value).strip().lower()
-
-    for source, target in replacements.items():
-        text = text.replace(source, target)
-
-    return text
-
-
-def parse_date_list(value) -> set[date]:
-    if pd.isna(value):
-        return set()
-
-    fechas = set()
-    parts = re.split(r"[,;\n]+", str(value))
-
-    for part in parts:
-        text = part.strip()
-
-        if not text:
-            continue
-
-        parsed = pd.to_datetime(text, dayfirst=True, errors="coerce")
-
-        if pd.notna(parsed):
-            fechas.add(parsed.date())
-
-    return fechas
-
-
-DIAS_ES = {
-    0: "lunes",
-    1: "martes",
-    2: "miércoles",
-    3: "jueves",
-    4: "viernes",
-    5: "sábado",
-    6: "domingo",
-}
-
-
 # ─────────────────────────────────────────────
 # GOOGLE APPS SCRIPT
 # ─────────────────────────────────────────────
 
 def post_to_apps_script(payload: dict):
-    payload = {**payload, "token": st.secrets["APPS_SCRIPT_TOKEN"]}
-
-    response = requests.post(
+    return post_action(
         st.secrets["APPS_SCRIPT_URL"],
-        json=payload,
-        timeout=10,
+        st.secrets["APPS_SCRIPT_TOKEN"],
+        payload,
     )
-
-    response.raise_for_status()
-    result = response.json()
-
-    if not result.get("ok"):
-        raise RuntimeError("Error de registro")
-
-    return result
 
 
 def save_incidencia(data: dict):
-    payload = {
-        "accion": "incidencia",
-        "usuario_nombre": data["usuario_nombre"],
-        "tipo": data["tipo"],
-        "categoria": data["categoria"],
-        "nombre": data["nombre"],
-        "municipio": data.get("municipio", ""),
-        "asunto": data["asunto"],
-        "descripcion": data["descripcion"],
-    }
-
-    return post_to_apps_script(payload)
+    return post_to_apps_script(incidence_payload(data))
 
 
 def save_resena_restaurante(data: dict):
-    payload = {
-        "accion": "nueva_resena_restaurante",
-        "restaurante": data["restaurante"],
-        "fecha": data["fecha"],
-        "guia": data["guia"],
-        "num_personas": data["num_personas"],
-        "precio_por_persona": data["precio_por_persona"],
-        "rating": data["rating"],
-        "comentario": data["comentario"],
-    }
-
-    return post_to_apps_script(payload)
+    return post_to_apps_script(restaurant_review_payload(data))
 
 
 # ─────────────────────────────────────────────
@@ -239,86 +184,21 @@ def save_resena_restaurante(data: dict):
 
 @st.cache_data(ttl=600)
 def load_data():
-    dfs = {}
-
-    for key, url in URLS.items():
-        df = normalize_columns(read_remote_csv(url))
-        validate_columns(key, df)
-
-        for col in [
-            "fecha_inicio",
-            "fecha_fin",
-            "actualizado",
-            "ultima_actualizacion",
-            "fecha",
-        ]:
-            if col in df.columns:
-                df[col] = pd.to_datetime(
-                    df[col],
-                    dayfirst=True,
-                    errors="coerce",
-                )
-
-        if "activo" in df.columns:
-            df["activo"] = df["activo"].apply(normalize_bool)
-
-        if "rating" in df.columns:
-            df["rating"] = pd.to_numeric(df["rating"], errors="coerce")
-
-        if "prioridad" in df.columns:
-            df["prioridad"] = pd.to_numeric(df["prioridad"], errors="coerce")
-
-        dfs[key] = df
-
-    return dfs
+    return load_all_sheets(SHEET_URLS)
 
 
-def fila_es_fecha(row: pd.Series, fecha: date) -> bool:
-    inicio = row.get("fecha_inicio")
-    fin = row.get("fecha_fin")
-
-    fechas_excluidas = parse_date_list(row.get("fechas_excluidas", ""))
-
-    if fecha in fechas_excluidas:
-        return False
-
-    if pd.notna(inicio) and fecha < inicio.date():
-        return False
-
-    if pd.notna(fin) and fecha > fin.date():
-        return False
-
-    dias_value = row.get("dias_semana", "")
-    dias_str = "" if pd.isna(dias_value) else str(dias_value).strip().lower()
-
-    if dias_str:
-        dia = normalize_day_name(DIAS_ES[fecha.weekday()])
-        dias = [
-            normalize_day_name(d)
-            for d in re.split(r"\s*(?:-|,|;|/|\by\b)\s*", dias_str)
-            if d.strip()
-        ]
-
-        if any(d in {"todos", "diario", "diaria", "todos los dias"} for d in dias):
-            return True
-
-        if dia not in dias:
-            return False
-
-    return True
-
-
-def filtrar_contenido(df: pd.DataFrame, recurso: str, fecha: date) -> pd.DataFrame:
-    if "recurso" not in df.columns:
-        return pd.DataFrame()
-
-    sub = df[df["recurso"] == recurso].copy()
-
-    if sub.empty:
-        return sub
-
-    mask = sub.apply(lambda r: fila_es_fecha(r, fecha), axis=1)
-    return sub[mask]
+def filtrar_contenido(
+    df: pd.DataFrame,
+    recurso: str,
+    fecha: date,
+    recurso_id="",
+) -> pd.DataFrame:
+    return filter_resource_content(
+        df,
+        resource_id=recurso_id,
+        resource_name=recurso,
+        selected_date=fecha,
+    )
 
 
 # ─────────────────────────────────────────────
@@ -499,16 +379,59 @@ def inject_css():
 # ─────────────────────────────────────────────
 
 def build_bloque(bloque_tipo, subtipo, contenido, fuente):
+    if not has_visible_content(contenido):
+        return ""
+
     fuente_html = (
-        f'<br><small style="color:#9ca3af">Fuente: {esc(fuente)}</small>'
-        if fuente else ""
+        f'<br><small style="color:#9ca3af">Fuente: {esc(plain_text_content(fuente))}</small>'
+        if has_visible_content(fuente) else ""
     )
 
     return (
         '<div class="bloque">'
-        f'<div class="bloque-label">{esc(bloque_tipo)}</div>'
-        f'<div class="bloque-subtipo">{esc(subtipo)}</div>'
+        f'<div class="bloque-label">{esc(plain_text_content(bloque_tipo))}</div>'
+        f'<div class="bloque-subtipo">{esc(plain_text_content(subtipo))}</div>'
         f'<div class="bloque-contenido">{esc_html_multiline(contenido)}{fuente_html}</div>'
+        '</div>'
+    )
+
+
+def build_bloques_contenido(contenido_fecha: pd.DataFrame) -> str:
+    """Render meaningful rows or a consistent empty-resource placeholder."""
+    bloques = []
+
+    if not contenido_fecha.empty and "bloque" in contenido_fecha.columns:
+        sort_cols = [
+            col for col in ["prioridad", "bloque", "subtipo"]
+            if col in contenido_fecha.columns
+        ]
+        if sort_cols:
+            contenido_fecha = contenido_fecha.sort_values(
+                sort_cols,
+                na_position="last",
+            )
+
+        for bloque_tipo, grupo in contenido_fecha.groupby(
+            "bloque",
+            sort=False,
+            dropna=False,
+        ):
+            for _, fila in grupo.iterrows():
+                bloque = build_bloque(
+                    bloque_tipo,
+                    fila.get("subtipo", ""),
+                    fila.get("contenido", ""),
+                    fila.get("fuente", ""),
+                )
+                if bloque:
+                    bloques.append(bloque)
+
+    if bloques:
+        return "".join(bloques)
+
+    return (
+        '<div class="no-results">'
+        'No hay contenido disponible todavía.'
         '</div>'
     )
 
@@ -562,7 +485,14 @@ def mensaje_error_envio():
     )
 
 
-def formulario_incidencia(tipo, categoria, nombre, municipio="", item_key=""):
+def formulario_incidencia(
+    tipo,
+    categoria,
+    nombre,
+    municipio="",
+    item_key="",
+    entidad_id="",
+):
     key_parts = [tipo, categoria, municipio, nombre, item_key]
     form_key = "form_incidencia_" + "_".join(
         safe_key(part) for part in key_parts if str(part).strip()
@@ -600,6 +530,7 @@ def formulario_incidencia(tipo, categoria, nombre, municipio="", item_key=""):
                         "tipo": tipo,
                         "categoria": categoria,
                         "nombre": nombre,
+                        "entidad_id": entidad_id,
                         "municipio": municipio,
                         "asunto": f"Corrección de {tipo}: {nombre}",
                         "descripcion": descripcion,
@@ -693,7 +624,12 @@ def formulario_nuevo_restaurante():
                     mensaje_error_envio()
 
 
-def formulario_nueva_resena_restaurante(nombre, municipio="", item_key=""):
+def formulario_nueva_resena_restaurante(
+    nombre,
+    municipio="",
+    item_key="",
+    restaurante_id="",
+):
     key_parts = [municipio, nombre, item_key]
     form_key = "form_resena_" + "_".join(
         safe_key(part) for part in key_parts if str(part).strip()
@@ -764,6 +700,7 @@ def formulario_nueva_resena_restaurante(nombre, municipio="", item_key=""):
 
                 try:
                     save_resena_restaurante({
+                        "restaurante_id": restaurante_id,
                         "restaurante": nombre,
                         "fecha": fecha_visita.strftime("%d/%m/%Y"),
                         "guia": guia,
@@ -856,42 +793,22 @@ def modulo_recursos(dfs):
 
     for idx, rec in df_fil.iterrows():
         nombre = rec["recurso"]
+        recurso_id = rec.get("recurso_id", "")
         municipio = rec.get("municipio", "")
         tipo_rec = rec.get("tipo", "")
         web = rec.get("web_oficial", "")
         ultima_act = rec.get("ultima_actualizacion", None)
 
-        contenido_fecha = filtrar_contenido(contenidos_df, nombre, fecha_sel)
+        contenido_fecha = filtrar_contenido(
+            contenidos_df,
+            nombre,
+            fecha_sel,
+            recurso_id,
+        )
 
-        if not contenido_fecha.empty and "bloque" in contenido_fecha.columns:
-            bloques_html = ""
-            sort_cols = [
-                col for col in ["prioridad", "bloque", "subtipo"]
-                if col in contenido_fecha.columns
-            ]
+        bloques_html = build_bloques_contenido(contenido_fecha)
 
-            if sort_cols:
-                contenido_fecha = contenido_fecha.sort_values(
-                    sort_cols,
-                    na_position="last",
-                )
-
-            for bloque_tipo, grupo in contenido_fecha.groupby("bloque", sort=False):
-                for _, fila in grupo.iterrows():
-                    bloques_html += build_bloque(
-                        bloque_tipo,
-                        fila.get("subtipo", "") or "",
-                        fila.get("contenido", "") or "",
-                        fila.get("fuente", "") or "",
-                    )
-        else:
-            bloques_html = (
-                '<small style="color:#6b7280">'
-                'No hay información registrada para la fecha consultada.'
-                '</small>'
-            )
-
-        st.markdown(f"""
+        render_html(f"""
         <div class="card">
             <div class="card-title">🏛️ {esc(nombre)}</div>
             <div>
@@ -901,7 +818,7 @@ def modulo_recursos(dfs):
             {bloques_html}
             {build_disclaimer(web, ultima_act)}
         </div>
-        """, unsafe_allow_html=True)
+        """)
 
         formulario_incidencia(
             tipo="recurso",
@@ -909,6 +826,7 @@ def modulo_recursos(dfs):
             nombre=nombre,
             municipio=municipio,
             item_key=idx,
+            entidad_id=recurso_id,
         )
 
 
@@ -920,16 +838,7 @@ def modulo_restaurantes(dfs):
     rest_df = dfs["restaurantes"]
     exp_df = dfs["experiencias_restaurantes"]
 
-    if not exp_df.empty and "rating" in exp_df.columns:
-        rating_medio = (
-            exp_df.groupby("restaurante")["rating"]
-            .agg(rating_medio="mean", n_resenas="count")
-            .reset_index()
-        )
-        rest_df = rest_df.merge(rating_medio, on="restaurante", how="left")
-    else:
-        rest_df["rating_medio"] = None
-        rest_df["n_resenas"] = 0
+    rest_df = attach_restaurant_ratings(rest_df, exp_df)
 
     municipios = [SELECT_MUNICIPIO, TODOS_MUNICIPIOS] + sorted(
         rest_df["municipio"].dropna().unique()
@@ -965,6 +874,7 @@ def modulo_restaurantes(dfs):
 
     for _, row in df_fil.iterrows():
         nombre = row["restaurante"]
+        restaurante_id = row.get("restaurante_id", "")
         municipio = row.get("municipio", "")
         grupos = row.get("admite_grupos", "")
         precio = row.get("precio_menu_grupos", None)
@@ -997,7 +907,13 @@ def modulo_restaurantes(dfs):
                 '</div>'
             )
 
-        resenas = exp_df[exp_df["restaurante"] == nombre].copy()
+        resenas = related_rows(
+            exp_df,
+            id_column="restaurante_id",
+            entity_id=restaurante_id,
+            name_column="restaurante",
+            entity_name=nombre,
+        )
 
         if "fecha" in resenas.columns:
             resenas["fecha"] = pd.to_datetime(resenas["fecha"], errors="coerce")
@@ -1027,14 +943,14 @@ def modulo_restaurantes(dfs):
                     res.get("comentario", ""),
                 )
 
-        st.markdown(f"""
+        render_html(f"""
         <div class="card">
             <div class="card-title">🍽️ {esc(nombre)}</div>
             <div>{etiquetas_html}</div>
             {rating_html}
             {resenas_html}
         </div>
-        """, unsafe_allow_html=True)
+        """)
 
         formulario_incidencia(
             tipo="restaurante",
@@ -1042,12 +958,14 @@ def modulo_restaurantes(dfs):
             nombre=nombre,
             municipio=municipio,
             item_key=row.name,
+            entidad_id=restaurante_id,
         )
 
         formulario_nueva_resena_restaurante(
             nombre=nombre,
             municipio=municipio,
             item_key=row.name,
+            restaurante_id=restaurante_id,
         )
 
 # ─────────────────────────────────────────────
@@ -1078,14 +996,20 @@ def main():
 
     try:
         with st.spinner("Cargando datos…"):
-            dfs = load_data()
+            load_result = load_data()
             
     except Exception:
+        logger.exception("Fallo inesperado durante la carga de datos")
         st.error(
             "No ha sido posible cargar la información. "
             "Inténtelo de nuevo más tarde o contacte con APIT Cantabria."
         )
         return
+
+    dfs = load_result.frames
+    if load_result.warnings:
+        for warning in load_result.warnings:
+            logger.warning(warning)
 
     tab_rec, tab_rest = st.tabs(["Recursos", "Restaurantes"])
 
@@ -1094,14 +1018,28 @@ def main():
             '<div class="section-header">Recursos Turísticos</div>',
             unsafe_allow_html=True,
         )
-        modulo_recursos(dfs)
+        missing = {"recursos", "contenidos_recursos"} - set(dfs)
+        if missing:
+            st.error(
+                "No se puede mostrar esta sección porque no se han podido "
+                f"cargar estas hojas: {', '.join(sorted(missing))}."
+            )
+        else:
+            modulo_recursos(dfs)
 
     with tab_rest:
         st.markdown(
             '<div class="section-header">Restaurantes</div>',
             unsafe_allow_html=True,
         )
-        modulo_restaurantes(dfs)
+        missing = {"restaurantes", "experiencias_restaurantes"} - set(dfs)
+        if missing:
+            st.error(
+                "No se puede mostrar esta sección porque no se han podido "
+                f"cargar estas hojas: {', '.join(sorted(missing))}."
+            )
+        else:
+            modulo_restaurantes(dfs)
 
     st.markdown(
         '<div style="text-align:center;color:#9ca3af;'
