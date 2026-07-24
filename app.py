@@ -19,19 +19,55 @@ from cms.data import load_all_sheets, normalize_lookup
 from cms.resources import (
     attach_restaurant_ratings,
     filter_resource_content,
-    latest_resource_confirmation,
     related_rows,
 )
 from cms.submissions import (
     incidence_payload,
     post_action,
-    resource_confirmation_payload,
     restaurant_review_payload,
 )
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def latest_resource_confirmation(
+    confirmations: pd.DataFrame,
+    *,
+    resource_id,
+    resource_name,
+):
+    """Keep app startup independent from cached versions of cms.resources."""
+    rows = related_rows(
+        confirmations,
+        id_column="recurso_id",
+        entity_id=resource_id,
+        name_column="recurso",
+        entity_name=resource_name,
+    )
+    if rows.empty or "fecha" not in rows.columns:
+        return None
+
+    dates = pd.to_datetime(rows["fecha"], dayfirst=True, errors="coerce").dropna()
+    return dates.max() if not dates.empty else None
+
+
+def resource_confirmation_payload(data: dict) -> dict:
+    """Build confirmation requests without coupling app startup to a helper import."""
+    return {
+        "accion": "confirmar_recurso",
+        "recurso_id": str(data.get("recurso_id", "")).strip(),
+        "recurso": data["recurso"].strip(),
+        "municipio": str(data.get("municipio", "")).strip(),
+        "guia": data["guia"].strip(),
+        "secciones": [
+            str(value).strip()
+            for value in data["secciones"]
+            if str(value).strip()
+        ],
+        "comentario": str(data.get("comentario", "")).strip(),
+    }
 
 st.set_page_config(
     page_title="AppitCant",
