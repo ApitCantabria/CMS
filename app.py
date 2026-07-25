@@ -909,7 +909,7 @@ def formulario_confirmacion_recurso(
 
 
 def formulario_nuevo_recurso():
-    with st.expander("Proponer un nuevo recurso turístico", expanded=False):
+    with st.expander("Añadir un nuevo recurso turístico", expanded=False):
         with st.form("form_nuevo_recurso"):
 
             guia = st.text_input(
