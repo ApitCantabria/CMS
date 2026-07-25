@@ -354,6 +354,37 @@ def inject_css():
         margin-bottom: 0.3rem;
     }
 
+    .card-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.65rem 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.3rem;
+    }
+
+    .card-heading .card-title {
+        margin-bottom: 0;
+    }
+
+    .card-contact {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        font-size: 0.78rem;
+        white-space: nowrap;
+    }
+
+    .card-contact a {
+        color: #0369a1;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .card-contact a:hover {
+        text-decoration: underline;
+    }
+
     .badge {
         display: inline-block;
         background: #e0f2fe;
@@ -1249,12 +1280,27 @@ def modulo_restaurantes(dfs):
         nombre = row["restaurante"]
         restaurante_id = row.get("restaurante_id", "")
         municipio = row.get("municipio", "")
+        telefono = plain_text_content(row.get("telefono", ""))
+        telefono_href = re.sub(r"[^\d+]", "", telefono)
+        web_restaurante = safe_external_url(row.get("web", ""))
         grupos = row.get("admite_grupos", "")
         precio = row.get("precio_menu_grupos", None)
         rating = row.get("rating_medio", None)
         n_res = int(row.get("n_resenas", 0)) if pd.notna(row.get("n_resenas")) else 0
 
         etiquetas_html = f'<span class="badge">{esc(municipio)}</span>'
+        contacto_html = '<div class="card-contact">'
+        if telefono and telefono_href:
+            contacto_html += (
+                f'<a href="tel:{esc(telefono_href)}" '
+                f'aria-label="Llamar a {esc(nombre)}">☎ {esc(telefono)}</a>'
+            )
+        if web_restaurante:
+            contacto_html += (
+                f'<a href="{esc(web_restaurante)}" target="_blank" '
+                'rel="noopener noreferrer">↗ Web</a>'
+            )
+        contacto_html += '</div>'
 
         if str(grupos).strip().upper() in ["SÍ", "SI", "YES", "TRUE", "VERDADERO"]:
             etiquetas_html += '<span class="badge badge-green">Admite grupos</span>'
@@ -1319,7 +1365,10 @@ def modulo_restaurantes(dfs):
         with st.container(border=True):
             render_html(f"""
             <div class="card-body">
-                <div class="card-title">🍽️ {esc(nombre)}</div>
+                <div class="card-heading">
+                    <div class="card-title">🍽️ {esc(nombre)}</div>
+                    {contacto_html}
+                </div>
                 <div>{etiquetas_html}</div>
                 {rating_html}
                 {resenas_html}
