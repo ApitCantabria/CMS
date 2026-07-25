@@ -155,6 +155,19 @@ function guardarConfirmacionRecurso(ss, data) {
     registro.comentario,
   ]);
 
+  enviarAvisoSeguro({
+    subject: "Nueva confirmación de datos en el CMS Cantabria",
+    body:
+      "Se ha confirmado la vigencia de los datos de un recurso.\n\n" +
+      "Fecha: " + fecha + "\n" +
+      "Recurso: " + registro.recurso + "\n" +
+      "ID: " + registro.recursoId + "\n" +
+      "Municipio: " + registro.municipio + "\n" +
+      "Persona que confirma: " + registro.guia + "\n" +
+      "Secciones comprobadas: " + registro.secciones.join(", ") + "\n\n" +
+      "Comentario:\n" + (registro.comentario || "Sin comentario"),
+  });
+
   return respuestaJSON(true, "");
 }
 
