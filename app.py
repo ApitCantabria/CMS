@@ -1322,7 +1322,7 @@ def modulo_restaurantes(dfs):
             rating_html = (
                 '<div class="bloque">'
                 '<div class="bloque-label">Valoración media</div>'
-                '<div class="bloque-contenido">Sin reseñas aún</div>'
+                '<div class="bloque-contenido">☆☆☆☆☆ Sin reseñas aún</div>'
                 '</div>'
             )
 
