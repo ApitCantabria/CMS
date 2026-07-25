@@ -11,7 +11,9 @@ import textwrap
 import re
 import html as html_lib
 import logging
+import base64
 from html.parser import HTMLParser
+from pathlib import Path
 from urllib.parse import urlparse
 
 from cms.config import SHEET_URLS
@@ -71,7 +73,7 @@ def resource_confirmation_payload(data: dict) -> dict:
     }
 
 st.set_page_config(
-    page_title="AppitCant",
+    page_title="CMS APIT Cantabria",
     page_icon="logo_apit.png",
     layout="centered",
     initial_sidebar_state="collapsed",
@@ -253,23 +255,44 @@ def filtrar_contenido(
 # ─────────────────────────────────────────────
 
 def inject_css():
-    st.markdown(html("""
+    hero_path = Path(__file__).with_name("hero-cantabria.webp")
+    hero_data = base64.b64encode(hero_path.read_bytes()).decode("ascii")
+    css = html("""
     <style>
+    [data-testid="stAppViewContainer"] {
+        background: #f7f7f3;
+    }
+
+    [data-testid="stAppViewContainer"]::before {
+        content: "";
+        position: absolute;
+        inset: 0 0 auto 0;
+        height: 19rem;
+        background-image: linear-gradient(90deg, rgba(250,249,245,.98) 0%, rgba(250,249,245,.91) 30%, rgba(250,249,245,.2) 62%, rgba(250,249,245,0) 100%), url("data:image/webp;base64,__HERO_DATA__");
+        background-position: center, center 48%;
+        background-size: cover;
+        background-repeat: no-repeat;
+        pointer-events: none;
+    }
+
     .block-container {
-        max-width: 720px;
-        padding: 1rem 1rem 4rem;
+        position: relative;
+        max-width: 1040px;
+        padding: 1.1rem 1.4rem 3rem;
     }
 
     .app-header {
-        margin: 0.25rem 0 0.75rem;
+        min-height: 13rem;
+        margin: 0.1rem 0 0.9rem;
     }
 
     h1.app-title {
-        color: #004EA8;
-        font-size: 2rem !important;
+        color: #115a38;
+        font-size: 2.15rem !important;
         font-weight: 800;
-        line-height: 1.18;
-        margin: 0.7rem 0 0.35rem;
+        line-height: 1.12;
+        letter-spacing: -0.025em;
+        margin: 0.55rem 0 0.4rem;
     }
 
     .app-subtitle {
@@ -280,8 +303,8 @@ def inject_css():
 
     .app-meta {
         color: #6b7280;
-        font-size: 0.84rem;
-        margin: 0 0 1.15rem;
+        font-size: 0.9rem;
+        margin: 0 0 0.85rem;
     }
 
     div.stButton > button:first-child {
@@ -557,16 +580,123 @@ def inject_css():
     }
 
     .no-results {
+        background: linear-gradient(135deg, #f5f8f5, #f9faf8);
+        border: 1px solid #e6ebe6;
+        border-radius: 12px;
         text-align: center;
         color: #6b7280;
-        padding: 1.5rem 1rem;
+        padding: 2.4rem 1rem;
         font-size: 0.9rem;
     }
 
+    [data-testid="stTabs"] {
+        background: rgba(255, 255, 255, .97);
+        border: 1px solid rgba(220, 225, 220, .9);
+        border-radius: 16px;
+        padding: 0.55rem 1.25rem 1.35rem;
+        box-shadow: 0 14px 36px rgba(31, 52, 40, .12);
+    }
+
+    [data-baseweb="tab-list"] {
+        display: flex;
+        gap: 0;
+        border-bottom: 1px solid #e4e7e5;
+    }
+
+    button[data-baseweb="tab"] {
+        width: auto;
+        min-height: 3.1rem;
+        border-radius: 0;
+        background: transparent;
+        color: #687078;
+        padding: 0.8rem 1.25rem;
+        font-weight: 600;
+    }
+
+    button[data-baseweb="tab"][aria-selected="true"] {
+        background: transparent;
+        color: #145d39;
+        box-shadow: inset 0 -2px 0 #197144;
+    }
+
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        border-color: #e3e7e3 !important;
+        border-radius: 14px !important;
+        box-shadow: 0 4px 15px rgba(37, 58, 45, .055);
+    }
+
+    .badge {
+        background: #e8f4ec;
+        color: #17643d;
+    }
+
+    .resource-section-title {
+        color: #17643d;
+    }
+
+    .benefits {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1.4rem;
+        margin: 1.7rem 1.1rem 0;
+    }
+
+    .benefit {
+        display: grid;
+        grid-template-columns: 2.8rem 1fr;
+        gap: 0.75rem;
+        align-items: start;
+    }
+
+    .benefit-icon {
+        display: grid;
+        place-items: center;
+        width: 2.65rem;
+        height: 2.65rem;
+        border-radius: 50%;
+        background: #e6f1e9;
+        color: #17643d;
+        font-size: 1.2rem;
+    }
+
+    .benefit strong {
+        display: block;
+        color: #174f33;
+        font-size: 0.78rem;
+        margin-bottom: 0.2rem;
+    }
+
+    .benefit span {
+        display: block;
+        color: #687078;
+        font-size: 0.72rem;
+        line-height: 1.45;
+    }
+
     @media (max-width: 640px) {
+        [data-testid="stAppViewContainer"]::before {
+            height: 16rem;
+            background-position: center, 62% top;
+        }
+
+        .block-container {
+            padding-inline: 0.75rem;
+        }
+
+        .app-header {
+            min-height: 11rem;
+        }
+
+        h1.app-title {
+            font-size: 1.65rem !important;
+        }
+
+        [data-testid="stTabs"] {
+            padding-inline: 0.75rem;
+        }
+
         [data-baseweb="tab-list"] {
-            grid-template-columns: 1fr;
-            gap: 0.5rem;
+            overflow-x: auto;
         }
 
         .resource-sections {
@@ -576,9 +706,16 @@ def inject_css():
         .detail-row {
             grid-template-columns: minmax(5rem, 0.38fr) minmax(0, 0.62fr);
         }
+
+        .benefits {
+            grid-template-columns: 1fr;
+            margin-inline: 0.5rem;
+        }
+
     }
     </style>
-    """), unsafe_allow_html=True)
+    """).replace("__HERO_DATA__", hero_data)
+    st.markdown(css, unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────
@@ -1543,15 +1680,10 @@ def render_header():
     st.image("logo_apit.png", width=92)
     st.markdown(
         """
-        <h1 class="app-title">Base de datos interna.<br>De guías para guías.</h1>
-        <p class="app-meta">Recursos turísticos · Restaurantes · Experiencias</p>
+        <h1 class="app-title">Base de datos colaborativa<br>De guías para guías</h1>
         """,
         unsafe_allow_html=True,
     )
-
-    if st.button("Actualizar información", key="refresh_header"):
-        st.cache_data.clear()
-        st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -1598,6 +1730,26 @@ def main():
             )
         else:
             modulo_restaurantes(dfs)
+
+    st.markdown(
+        """
+        <div class="benefits">
+            <div class="benefit">
+                <div class="benefit-icon">⌖</div>
+                <div><strong>Información actualizada</strong><span>Datos revisados para que trabajes con total confianza.</span></div>
+            </div>
+            <div class="benefit">
+                <div class="benefit-icon">♙</div>
+                <div><strong>De guías para guías</strong><span>Una herramienta creada por y para profesionales del turismo.</span></div>
+            </div>
+            <div class="benefit">
+                <div class="benefit-icon">♡</div>
+                <div><strong>Impulsa Cantabria</strong><span>Conoce mejor lo nuestro para ofrecer experiencias únicas.</span></div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.markdown(
         '<div style="text-align:center;color:#9ca3af;'
