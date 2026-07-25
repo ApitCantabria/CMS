@@ -124,6 +124,20 @@ class ResourceCardTests(unittest.TestCase):
         self.assertIn("resource-section-title\">Contacto", markup)
         self.assertIn('href="https://example.com"', markup)
 
+    def test_does_not_repeat_web_when_it_is_already_a_source(self):
+        rows = pd.DataFrame([{
+            "bloque": "horario",
+            "subtipo": "General",
+            "contenido": "10:00 a 18:00",
+            "fuente": "https://example.com/visita/",
+        }])
+
+        markup = build_resource_sections(rows, "https://example.com/visita")
+
+        self.assertEqual(markup.count('href="https://example.com/visita/"'), 1)
+        self.assertNotIn('detail-label\">Web', markup)
+        self.assertNotIn('resource-section-title\">Contacto', markup)
+
     def test_does_not_repeat_generic_information_in_additional_section(self):
         rows = pd.DataFrame([
             {

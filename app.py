@@ -372,6 +372,18 @@ def inject_css():
         margin-bottom: 0;
     }
 
+    .card-identity {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        min-width: 0;
+    }
+
+    .card-identity .badge {
+        margin: 0;
+    }
+
     .card-contact {
         display: flex;
         align-items: center;
@@ -668,10 +680,18 @@ def build_resource_sections(contenido_fecha: pd.DataFrame, web="") -> str:
                 "source": plain_text_content(row.get("fuente", "")),
             })
 
-    if has_visible_content(web):
+    web_url = safe_external_url(web)
+    referenced_urls = {
+        safe_external_url(item["source"]).rstrip("/")
+        for items in sections.values()
+        for item in items
+        if safe_external_url(item["source"])
+    }
+
+    if web_url and web_url.rstrip("/") not in referenced_urls:
         sections["contacto"].append({
             "label": "Web",
-            "value": plain_text_content(web),
+            "value": web_url,
             "source": "",
         })
 
@@ -1304,8 +1324,8 @@ def modulo_recursos(dfs):
         with st.container(border=True):
             render_html(f"""
             <div class="card-body">
-                <div class="card-title">🏛️ {esc(nombre)}</div>
-                <div>
+                <div class="card-identity">
+                    <div class="card-title">🏛️ {esc(nombre)}</div>
                     <span class="badge">{esc(municipio)}</span>
                 </div>
                 {bloques_html}
@@ -1406,7 +1426,7 @@ def modulo_restaurantes(dfs):
         rating = row.get("rating_medio", None)
         n_res = int(row.get("n_resenas", 0)) if pd.notna(row.get("n_resenas")) else 0
 
-        etiquetas_html = f'<span class="badge">{esc(municipio)}</span>'
+        etiquetas_html = ""
         contacto_html = '<div class="card-contact">'
         if telefono and telefono_href:
             contacto_html += (
@@ -1484,10 +1504,13 @@ def modulo_restaurantes(dfs):
             render_html(f"""
             <div class="card-body">
                 <div class="card-heading">
-                    <div class="card-title">🍽️ {esc(nombre)}</div>
+                    <div class="card-identity">
+                        <div class="card-title">🍽️ {esc(nombre)}</div>
+                        <span class="badge">{esc(municipio)}</span>
+                    </div>
                     {contacto_html}
                 </div>
-                <div>{etiquetas_html}</div>
+                {f'<div>{etiquetas_html}</div>' if etiquetas_html else ''}
                 {rating_html}
                 {resenas_html}
             </div>
