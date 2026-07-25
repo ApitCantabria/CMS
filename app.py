@@ -256,15 +256,15 @@ def inject_css():
     }
 
     .app-header {
-        margin: 0.4rem 0 1.6rem;
+        margin: 0.25rem 0 0.75rem;
     }
 
-    .app-title {
+    h1.app-title {
         color: #004EA8;
-        font-size: 1.45rem;
+        font-size: 2rem !important;
         font-weight: 800;
-        line-height: 1.15;
-        margin: 1rem 0 0.45rem;
+        line-height: 1.18;
+        margin: 0.7rem 0 0.35rem;
     }
 
     .app-subtitle {
@@ -294,6 +294,10 @@ def inject_css():
         color: #004EA8;
     }
 
+    div.stButton {
+        margin-bottom: 0.25rem;
+    }
+
     .section-header {
         background: linear-gradient(135deg, #1a4a6b 0%, #0d7c9e 100%);
         color: white;
@@ -304,14 +308,15 @@ def inject_css():
     }
 
     /* The blue module headings also work as the module selectors. */
-    div[data-testid="stTabs"] [data-baseweb="tab-list"] {
+    [data-baseweb="tab-list"] {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 0.75rem;
+        width: 100%;
         margin-bottom: 1rem;
     }
 
-    div[data-testid="stTabs"] button[data-baseweb="tab"] {
+    button[data-baseweb="tab"] {
         width: 100%;
         min-height: 3.15rem;
         justify-content: flex-start;
@@ -323,13 +328,13 @@ def inject_css():
         font-weight: 700;
     }
 
-    div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] {
+    button[data-baseweb="tab"][aria-selected="true"] {
         background: linear-gradient(135deg, #1a4a6b 0%, #0d7c9e 100%);
         color: #ffffff;
     }
 
-    div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
-    div[data-testid="stTabs"] [data-baseweb="tab-border"] {
+    [data-baseweb="tab-highlight"],
+    [data-baseweb="tab-border"] {
         display: none;
     }
 
@@ -504,7 +509,7 @@ def inject_css():
     }
 
     @media (max-width: 640px) {
-        div[data-testid="stTabs"] [data-baseweb="tab-list"] {
+        [data-baseweb="tab-list"] {
             grid-template-columns: 1fr;
             gap: 0.5rem;
         }
