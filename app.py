@@ -303,6 +303,36 @@ def inject_css():
         font-weight: 600;
     }
 
+    /* The blue module headings also work as the module selectors. */
+    div[data-testid="stTabs"] [data-baseweb="tab-list"] {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    div[data-testid="stTabs"] button[data-baseweb="tab"] {
+        width: 100%;
+        min-height: 3.15rem;
+        justify-content: flex-start;
+        border: 0;
+        border-radius: 10px;
+        background: #dcebf2;
+        color: #1a4a6b;
+        padding: 0.75rem 1rem;
+        font-weight: 700;
+    }
+
+    div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] {
+        background: linear-gradient(135deg, #1a4a6b 0%, #0d7c9e 100%);
+        color: #ffffff;
+    }
+
+    div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
+    div[data-testid="stTabs"] [data-baseweb="tab-border"] {
+        display: none;
+    }
+
     .card {
         background: #ffffff;
         border: 1px solid #e5e9ef;
@@ -474,6 +504,11 @@ def inject_css():
     }
 
     @media (max-width: 640px) {
+        div[data-testid="stTabs"] [data-baseweb="tab-list"] {
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+        }
+
         .resource-sections {
             grid-template-columns: 1fr;
         }
@@ -1343,13 +1378,9 @@ def main():
         for warning in load_result.warnings:
             logger.warning(warning)
 
-    tab_rec, tab_rest = st.tabs(["Recursos", "Restaurantes"])
+    tab_rec, tab_rest = st.tabs(["Recursos turísticos", "Restaurantes"])
 
     with tab_rec:
-        st.markdown(
-            '<div class="section-header">Recursos Turísticos</div>',
-            unsafe_allow_html=True,
-        )
         missing = {"recursos", "contenidos_recursos"} - set(dfs)
         if missing:
             st.error(
@@ -1360,10 +1391,6 @@ def main():
             modulo_recursos(dfs)
 
     with tab_rest:
-        st.markdown(
-            '<div class="section-header">Restaurantes</div>',
-            unsafe_allow_html=True,
-        )
         missing = {"restaurantes", "experiencias_restaurantes"} - set(dfs)
         if missing:
             st.error(
