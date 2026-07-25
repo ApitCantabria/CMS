@@ -220,6 +220,19 @@ class SubmissionTests(unittest.TestCase):
         self.assertEqual(review["restaurante_id"], "rest1")
         self.assertEqual(review["comentario"], "Bien")
 
+        review_without_optional_values = restaurant_review_payload({
+            "restaurante_id": "rest1",
+            "restaurante": "Local",
+            "fecha": "25/07/2026",
+            "guia": "Ana",
+            "num_personas": None,
+            "precio_por_persona": "",
+            "rating": 5,
+            "comentario": "Muy bien",
+        })
+        self.assertEqual(review_without_optional_values["num_personas"], "")
+        self.assertEqual(review_without_optional_values["precio_por_persona"], "")
+
         experience = resource_experience_payload({
             "recurso_id": " r1 ",
             "recurso": " Museo ",

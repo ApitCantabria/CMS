@@ -769,10 +769,12 @@ def build_disclaimer(ultima_act):
 
 
 def build_resena(r_stars, guia, fecha_str, n_p, comentario):
+    personas = plain_text_content(n_p)
+    personas_meta = f' · {esc(personas)} pax' if personas else ''
     return (
         '<div class="review">'
         '<div class="review-meta">'
-        f'{esc(r_stars)} · {esc(guia)} · {esc(fecha_str)} · {esc(n_p)} pax'
+        f'{esc(r_stars)} · {esc(guia)} · {esc(fecha_str)}{personas_meta}'
         '</div>'
         '<div class="review-comment">'
         f'{esc(comentario)}'
@@ -1072,6 +1074,10 @@ def formulario_nueva_resena_restaurante(
     with st.expander("Comparte tu experiencia", expanded=False):
         with st.form(form_key):
 
+            st.caption(
+                "Campos obligatorios: tu nombre, fecha, valoración y comentario."
+            )
+
             guia = st.text_input(
                 "Tu nombre",
                 placeholder="Escribe tu nombre y apellidos",
@@ -1086,14 +1092,16 @@ def formulario_nueva_resena_restaurante(
             )
 
             n_personas = st.number_input(
-                "Personas",
+                "¿Con cuántas personas has ido? (opcional)",
                 min_value=1,
+                value=None,
                 step=1,
+                placeholder="Puedes dejarlo en blanco",
                 key=f"personas_{form_key}",
             )
 
             precio = st.text_input(
-                "Precio por persona",
+                "Precio por persona (opcional)",
                 placeholder="Ejemplo: 22",
                 key=f"precio_{form_key}",
             )
@@ -1143,7 +1151,7 @@ def formulario_nueva_resena_restaurante(
                         "restaurante": nombre,
                         "fecha": fecha_visita.strftime("%d/%m/%Y"),
                         "guia": guia,
-                        "num_personas": int(n_personas),
+                        "num_personas": n_personas,
                         "precio_por_persona": precio,
                         "rating": len(valoracion),
                         "comentario": comentario,

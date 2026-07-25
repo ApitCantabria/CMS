@@ -42,7 +42,11 @@ def restaurant_review_payload(data: dict) -> dict:
         "restaurante": data["restaurante"].strip(),
         "fecha": data["fecha"],
         "guia": data["guia"].strip(),
-        "num_personas": int(data["num_personas"]),
+        "num_personas": (
+            int(data["num_personas"])
+            if data.get("num_personas") not in (None, "")
+            else ""
+        ),
         "precio_por_persona": str(data["precio_por_persona"]).strip(),
         "rating": int(data["rating"]),
         "comentario": data["comentario"].strip(),

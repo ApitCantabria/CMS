@@ -103,7 +103,7 @@ function guardarResenaRestaurante(ss, data) {
     restaurante: campo(data.restaurante, "restaurante", 250, true),
     fecha: campo(data.fecha, "fecha", 20, true),
     guia: campo(data.guia, "guia", 120, true),
-    personas: numeroEntero(data.num_personas, "num_personas", 1, 500),
+    personas: numeroEnteroOpcional(data.num_personas, "num_personas", 1, 500),
     precio: campo(data.precio_por_persona, "precio_por_persona", 50, false),
     rating: numeroEntero(data.rating, "rating", 1, 5),
     comentario: campo(data.comentario, "comentario", 2000, true),
@@ -263,6 +263,13 @@ function numeroEntero(value, nombre, min, max) {
     throw new Error("Valor no válido: " + nombre);
   }
   return number;
+}
+
+function numeroEnteroOpcional(value, nombre, min, max) {
+  if (value === undefined || value === null || value === "") {
+    return "";
+  }
+  return numeroEntero(value, nombre, min, max);
 }
 
 function enviarAvisoSeguro(message) {
