@@ -913,7 +913,7 @@ def formulario_nuevo_recurso():
         with st.form("form_nuevo_recurso"):
 
             guia = st.text_input(
-                "Nombre del guía",
+                "Tu nombre",
                 placeholder="Escribe tu nombre y apellidos",
             )
             nombre = st.text_input("Nombre del recurso")
@@ -953,11 +953,11 @@ def formulario_nuevo_recurso():
 
 
 def formulario_nuevo_restaurante():
-    with st.expander("¿Falta algún restaurante?", expanded=False):
+    with st.expander("Añadir un nuevo restaurante", expanded=False):
         with st.form("form_nuevo_restaurante"):
 
             guia = st.text_input(
-                "Nombre del guía",
+                "Tu nombre",
                 placeholder="Escribe tu nombre y apellidos",
             )
             nombre = st.text_input("Nombre del restaurante")
@@ -1011,7 +1011,7 @@ def formulario_nueva_resena_restaurante(
         with st.form(form_key):
 
             guia = st.text_input(
-                "Nombre del guía",
+                "Tu nombre",
                 placeholder="Escribe tu nombre y apellidos",
                 key=f"guia_{form_key}",
             )
