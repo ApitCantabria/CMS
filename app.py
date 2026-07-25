@@ -1520,7 +1520,7 @@ def render_header():
     st.image("logo_apit.png", width=92)
     st.markdown(
         """
-        <h1 class="app-title">Una base de datos<br>de guías para guías</h1>
+        <h1 class="app-title">Base de datos interna.<br>De guías para guías.</h1>
         <p class="app-meta">Recursos turísticos · Restaurantes · Experiencias</p>
         """,
         unsafe_allow_html=True,
