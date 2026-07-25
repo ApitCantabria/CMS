@@ -495,13 +495,6 @@ def inject_css():
         text-transform: uppercase;
     }
 
-    .rating-heading {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-    }
-
     .rating-empty-stars {
         color: #9ca3af;
         font-size: 1rem;
@@ -1335,10 +1328,7 @@ def modulo_restaurantes(dfs):
         else:
             rating_html = (
                 '<div class="bloque">'
-                '<div class="rating-heading">'
-                '<div class="bloque-label">Valoración media</div>'
-                '<div class="rating-empty-stars">☆☆☆☆☆</div>'
-                '</div>'
+                '<div class="bloque-label rating-empty-stars">☆☆☆☆☆</div>'
                 '<div class="bloque-contenido">Sin reseñas aún</div>'
                 '</div>'
             )
