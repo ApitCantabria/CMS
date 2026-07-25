@@ -851,7 +851,6 @@ def formulario_confirmacion_recurso(
     nombre,
     municipio,
     entidad_id,
-    secciones_disponibles,
     item_key="",
 ):
     form_key = "form_confirmacion_" + "_".join(
@@ -859,8 +858,6 @@ def formulario_confirmacion_recurso(
         for part in [municipio, nombre, entidad_id, item_key]
         if str(part).strip()
     )
-    opciones = ["Toda la ficha", *secciones_disponibles]
-
     with st.expander("✓ Confirma que los datos siguen vigentes", expanded=False):
         with st.form(form_key):
             guia = st.text_input(
@@ -868,15 +865,13 @@ def formulario_confirmacion_recurso(
                 placeholder="Escribe tu nombre y apellidos",
                 key=f"guia_{form_key}",
             )
-            secciones = st.multiselect(
-                "¿Qué has comprobado?",
-                opciones,
-                key=f"secciones_{form_key}",
-            )
-            comentario = st.text_area(
-                "¿Quieres añadir algún comentario? (opcional)",
-                placeholder="Por ejemplo: tarifas confirmadas directamente en taquilla.",
-                key=f"comentario_{form_key}",
+            comprobacion = st.text_area(
+                "Cuéntanos qué información has comprobado",
+                placeholder=(
+                    "Indica qué datos has revisado y cómo los comprobaste. "
+                    "Por ejemplo: tarifas confirmadas directamente en taquilla."
+                ),
+                key=f"comprobacion_{form_key}",
             )
             enviar = st.form_submit_button("Confirmar datos")
 
@@ -884,12 +879,9 @@ def formulario_confirmacion_recurso(
                 if not guia.strip():
                     st.warning("Necesitamos tu nombre para registrar la comprobación.")
                     return
-                if not secciones:
-                    st.warning("Indica qué información has comprobado.")
-                    return
-                if "Toda la ficha" in secciones and len(secciones) > 1:
+                if not comprobacion.strip():
                     st.warning(
-                        "Elige “Toda la ficha” o secciones concretas, pero no ambas."
+                        "Cuéntanos qué información has comprobado antes de confirmar."
                     )
                     return
 
@@ -899,8 +891,8 @@ def formulario_confirmacion_recurso(
                         "recurso_id": entidad_id,
                         "municipio": municipio,
                         "guia": guia,
-                        "secciones": secciones,
-                        "comentario": comentario,
+                        "secciones": ["Comprobación descrita"],
+                        "comentario": comprobacion,
                     })
                     st.cache_data.clear()
                     st.success("¡Gracias! Hemos registrado tu comprobación.")
@@ -1215,10 +1207,6 @@ def modulo_recursos(dfs):
                         nombre=nombre,
                         municipio=municipio,
                         entidad_id=recurso_id,
-                        secciones_disponibles=confirmation_section_options(
-                            contenido_fecha,
-                            web,
-                        ),
                         item_key=idx,
                     )
                 with col_incidencia:

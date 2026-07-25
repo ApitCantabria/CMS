@@ -178,6 +178,7 @@ function validarSecciones(value) {
     "Tarifas",
     "Contacto",
     "Información adicional",
+    "Comprobación descrita",
   ];
   if (!Array.isArray(value) || value.length === 0) {
     throw new Error("Falta el campo obligatorio: secciones");
