@@ -25,6 +25,7 @@ from cms.submissions import (
     incidence_payload,
     post_action,
     restaurant_review_payload,
+    resource_experience_payload,
 )
 
 
@@ -214,6 +215,10 @@ def save_incidencia(data: dict):
 
 def save_resena_restaurante(data: dict):
     return post_to_apps_script(restaurant_review_payload(data))
+
+
+def save_experiencia_recurso(data: dict):
+    return post_to_apps_script(resource_experience_payload(data))
 
 
 def save_confirmacion_recurso(data: dict):
@@ -787,6 +792,15 @@ def mensaje_error_envio():
     )
 
 
+def build_experiencia_recurso(guia, fecha_str, comentario):
+    return (
+        '<div class="review">'
+        f'<div class="review-meta">{esc(guia)} · {esc(fecha_str)}</div>'
+        f'<div class="review-comment">{esc(comentario)}</div>'
+        '</div>'
+    )
+
+
 def formulario_incidencia(
     tipo,
     categoria,
@@ -896,6 +910,62 @@ def formulario_confirmacion_recurso(
                     })
                     st.cache_data.clear()
                     st.success("¡Gracias! Hemos registrado tu comprobación.")
+                except Exception:
+                    mensaje_error_envio()
+
+
+def formulario_experiencia_recurso(
+    nombre,
+    recurso_id="",
+    item_key="",
+):
+    form_key = "form_experiencia_recurso_" + "_".join(
+        safe_key(part)
+        for part in [nombre, recurso_id, item_key]
+        if str(part).strip()
+    )
+
+    with st.expander("Comparte tu experiencia", expanded=False):
+        with st.form(form_key):
+            guia = st.text_input(
+                "Tu nombre",
+                placeholder="Escribe tu nombre y apellidos",
+                key=f"guia_{form_key}",
+            )
+            fecha_visita = st.date_input(
+                "Fecha",
+                value=date.today(),
+                format="DD/MM/YYYY",
+                key=f"fecha_{form_key}",
+            )
+            comentario = st.text_area(
+                "Comentario",
+                placeholder="Cuéntanos brevemente cómo fue tu experiencia.",
+                key=f"comentario_{form_key}",
+            )
+            st.caption(
+                "Tu comentario se publicará inmediatamente y será visible "
+                "para otros usuarios."
+            )
+            enviar = st.form_submit_button("Publicar experiencia")
+
+            if enviar:
+                if not guia.strip():
+                    st.warning("Necesitamos tu nombre para publicar la experiencia.")
+                    return
+                if not comentario.strip():
+                    st.warning("Añade un comentario breve sobre tu experiencia.")
+                    return
+                try:
+                    save_experiencia_recurso({
+                        "recurso_id": recurso_id,
+                        "recurso": nombre,
+                        "fecha": fecha_visita.strftime("%d/%m/%Y"),
+                        "guia": guia,
+                        "comentario": comentario,
+                    })
+                    st.cache_data.clear()
+                    st.success("¡Gracias! Tu experiencia ya está publicada.")
                 except Exception:
                     mensaje_error_envio()
 
@@ -1047,6 +1117,11 @@ def formulario_nueva_resena_restaurante(
                 key=f"comentario_{form_key}",
             )
 
+            st.caption(
+                "Tu comentario se publicará inmediatamente y será visible "
+                "para otros usuarios."
+            )
+
             enviar = st.form_submit_button("Publicar reseña")
 
             if enviar:
@@ -1088,6 +1163,7 @@ def modulo_recursos(dfs):
     recursos_df = dfs["recursos"]
     contenidos_df = dfs["contenidos_recursos"]
     confirmaciones_df = dfs.get("confirmaciones_recursos", pd.DataFrame())
+    experiencias_df = dfs.get("experiencias_recursos", pd.DataFrame())
 
     hoy = date.today()
     fecha_max = add_years_safe(hoy, 2)
@@ -1187,6 +1263,36 @@ def modulo_recursos(dfs):
                 '</div>'
             )
 
+        experiencias = related_rows(
+            experiencias_df,
+            id_column="recurso_id",
+            entity_id=recurso_id,
+            name_column="recurso",
+            entity_name=nombre,
+        )
+        if "fecha" in experiencias.columns:
+            experiencias["fecha"] = pd.to_datetime(
+                experiencias["fecha"], dayfirst=True, errors="coerce"
+            )
+            experiencias = experiencias.sort_values("fecha", ascending=False)
+
+        experiencias_html = ""
+        if not experiencias.empty:
+            experiencias_html = (
+                '<div class="reviews-title">Experiencias compartidas</div>'
+            )
+            for _, experiencia in experiencias.iterrows():
+                fecha_experiencia = (
+                    experiencia["fecha"].strftime("%d/%m/%Y")
+                    if pd.notna(experiencia.get("fecha"))
+                    else ""
+                )
+                experiencias_html += build_experiencia_recurso(
+                    experiencia.get("guia", ""),
+                    fecha_experiencia,
+                    experiencia.get("comentario", ""),
+                )
+
         with st.container(border=True):
             render_html(f"""
             <div class="card-body">
@@ -1227,6 +1333,15 @@ def modulo_recursos(dfs):
                     item_key=idx,
                     entidad_id=recurso_id,
                 )
+
+            formulario_experiencia_recurso(
+                nombre=nombre,
+                recurso_id=recurso_id,
+                item_key=idx,
+            )
+
+            if experiencias_html:
+                render_html(experiencias_html)
 
 
 # ─────────────────────────────────────────────

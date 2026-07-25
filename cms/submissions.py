@@ -49,6 +49,17 @@ def restaurant_review_payload(data: dict) -> dict:
     }
 
 
+def resource_experience_payload(data: dict) -> dict:
+    return {
+        "accion": "nueva_experiencia_recurso",
+        "recurso_id": str(data.get("recurso_id", "")).strip(),
+        "recurso": data["recurso"].strip(),
+        "fecha": data["fecha"],
+        "guia": data["guia"].strip(),
+        "comentario": data["comentario"].strip(),
+    }
+
+
 def resource_confirmation_payload(data: dict) -> dict:
     return {
         "accion": "confirmar_recurso",

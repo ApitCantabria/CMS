@@ -5,6 +5,7 @@ SHEET_NAMES = {
     "contenidos_recursos": "contenidos-recursos",
     "restaurantes": "restaurantes",
     "experiencias_restaurantes": "experiencias_restaurantes",
+    "experiencias_recursos": "experiencias_recursos",
     "confirmaciones_recursos": "confirmaciones_recursos",
 }
 
@@ -32,6 +33,10 @@ SHEET_SCHEMAS = {
     "experiencias_restaurantes": {
         "required": {"restaurante"},
         "recommended": {"restaurante_id"},
+    },
+    "experiencias_recursos": {
+        "required": {"recurso", "fecha", "guia", "comentario"},
+        "recommended": {"recurso_id"},
     },
     "confirmaciones_recursos": {
         "required": {"fecha", "guia", "recurso", "secciones"},

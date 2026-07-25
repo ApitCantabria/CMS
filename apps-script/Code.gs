@@ -3,6 +3,7 @@ const SHEET_ID = "1J1T4vS736sotTVP9KgdSje0OxlBvFU_7alO4Mwap5YY";
 const ACCIONES_PERMITIDAS = [
   "incidencia",
   "nueva_resena_restaurante",
+  "nueva_experiencia_recurso",
   "confirmar_recurso",
 ];
 
@@ -34,6 +35,9 @@ function doPost(e) {
       }
       if (data.accion === "confirmar_recurso") {
         return guardarConfirmacionRecurso(ss, data);
+      }
+      if (data.accion === "nueva_experiencia_recurso") {
+        return guardarExperienciaRecurso(ss, data);
       }
       return guardarResenaRestaurante(ss, data);
     } finally {
@@ -127,6 +131,38 @@ function guardarResenaRestaurante(ss, data) {
       "Personas: " + registro.personas + "\n" +
       "Precio por persona: " + registro.precio + "\n" +
       "Valoración: " + registro.rating + "/5\n\n" +
+      "Comentario:\n" + registro.comentario,
+  });
+
+  return respuestaJSON(true, "");
+}
+
+function guardarExperienciaRecurso(ss, data) {
+  const sheet = obtenerHoja(ss, "experiencias_recursos");
+  const registro = {
+    recurso: campo(data.recurso, "recurso", 250, true),
+    fecha: campo(data.fecha, "fecha", 20, true),
+    guia: campo(data.guia, "guia", 120, true),
+    comentario: campo(data.comentario, "comentario", 2000, true),
+    recursoId: campo(data.recurso_id, "recurso_id", 100, false),
+  };
+
+  sheet.appendRow([
+    registro.recurso,
+    registro.fecha,
+    registro.guia,
+    registro.comentario,
+    registro.recursoId,
+  ]);
+
+  enviarAvisoSeguro({
+    subject: "Nueva experiencia de recurso en el CMS Cantabria",
+    body:
+      "Se ha publicado una nueva experiencia sobre un recurso.\n\n" +
+      "Recurso: " + registro.recurso + "\n" +
+      "ID: " + registro.recursoId + "\n" +
+      "Fecha: " + registro.fecha + "\n" +
+      "Persona: " + registro.guia + "\n\n" +
       "Comentario:\n" + registro.comentario,
   });
 

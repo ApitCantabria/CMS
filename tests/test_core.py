@@ -24,6 +24,7 @@ from cms.resources import (
 from cms.submissions import (
     incidence_payload,
     resource_confirmation_payload,
+    resource_experience_payload,
     restaurant_review_payload,
 )
 
@@ -218,6 +219,17 @@ class SubmissionTests(unittest.TestCase):
         })
         self.assertEqual(review["restaurante_id"], "rest1")
         self.assertEqual(review["comentario"], "Bien")
+
+        experience = resource_experience_payload({
+            "recurso_id": " r1 ",
+            "recurso": " Museo ",
+            "fecha": "25/07/2026",
+            "guia": " Ana ",
+            "comentario": " Muy útil ",
+        })
+        self.assertEqual(experience["accion"], "nueva_experiencia_recurso")
+        self.assertEqual(experience["recurso_id"], "r1")
+        self.assertEqual(experience["comentario"], "Muy útil")
 
         confirmation = resource_confirmation_payload({
             "recurso_id": " r1 ",
