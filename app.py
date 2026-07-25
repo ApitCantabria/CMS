@@ -371,7 +371,7 @@ def inject_css():
         display: flex;
         align-items: center;
         gap: 0.7rem;
-        font-size: 0.78rem;
+        font-size: 0.9rem;
         white-space: nowrap;
     }
 
