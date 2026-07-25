@@ -1157,32 +1157,42 @@ def modulo_recursos(dfs):
                 '</div>'
             )
 
-        render_html(f"""
-        <div class="card">
-            <div class="card-title">🏛️ {esc(nombre)}</div>
-            <div>
-                <span class="badge">{esc(municipio)}</span>
+        with st.container(border=True):
+            render_html(f"""
+            <div class="card-body">
+                <div class="card-title">🏛️ {esc(nombre)}</div>
+                <div>
+                    <span class="badge">{esc(municipio)}</span>
+                </div>
+                {bloques_html}
+                {confirmacion_html}
+                {build_disclaimer(ultima_act) if contenido_disponible else ""}
             </div>
-            {bloques_html}
-            {confirmacion_html}
-            {build_disclaimer(ultima_act) if contenido_disponible else ""}
-        </div>
-        """)
+            """)
 
-        if contenido_disponible:
-            col_confirmacion, col_incidencia = st.columns(2, gap="small")
-            with col_confirmacion:
-                formulario_confirmacion_recurso(
-                    nombre=nombre,
-                    municipio=municipio,
-                    entidad_id=recurso_id,
-                    secciones_disponibles=confirmation_section_options(
-                        contenido_fecha,
-                        web,
-                    ),
-                    item_key=idx,
-                )
-            with col_incidencia:
+            if contenido_disponible:
+                col_confirmacion, col_incidencia = st.columns(2, gap="small")
+                with col_confirmacion:
+                    formulario_confirmacion_recurso(
+                        nombre=nombre,
+                        municipio=municipio,
+                        entidad_id=recurso_id,
+                        secciones_disponibles=confirmation_section_options(
+                            contenido_fecha,
+                            web,
+                        ),
+                        item_key=idx,
+                    )
+                with col_incidencia:
+                    formulario_incidencia(
+                        tipo="recurso",
+                        categoria="correccion",
+                        nombre=nombre,
+                        municipio=municipio,
+                        item_key=idx,
+                        entidad_id=recurso_id,
+                    )
+            else:
                 formulario_incidencia(
                     tipo="recurso",
                     categoria="correccion",
@@ -1191,15 +1201,6 @@ def modulo_recursos(dfs):
                     item_key=idx,
                     entidad_id=recurso_id,
                 )
-        else:
-            formulario_incidencia(
-                tipo="recurso",
-                categoria="correccion",
-                nombre=nombre,
-                municipio=municipio,
-                item_key=idx,
-                entidad_id=recurso_id,
-            )
 
 
 # ─────────────────────────────────────────────
@@ -1315,32 +1316,33 @@ def modulo_restaurantes(dfs):
                     res.get("comentario", ""),
                 )
 
-        render_html(f"""
-        <div class="card">
-            <div class="card-title">🍽️ {esc(nombre)}</div>
-            <div>{etiquetas_html}</div>
-            {rating_html}
-            {resenas_html}
-        </div>
-        """)
+        with st.container(border=True):
+            render_html(f"""
+            <div class="card-body">
+                <div class="card-title">🍽️ {esc(nombre)}</div>
+                <div>{etiquetas_html}</div>
+                {rating_html}
+                {resenas_html}
+            </div>
+            """)
 
-        col_experiencia, col_incidencia = st.columns(2, gap="small")
-        with col_experiencia:
-            formulario_nueva_resena_restaurante(
-                nombre=nombre,
-                municipio=municipio,
-                item_key=row.name,
-                restaurante_id=restaurante_id,
-            )
-        with col_incidencia:
-            formulario_incidencia(
-                tipo="restaurante",
-                categoria="correccion",
-                nombre=nombre,
-                municipio=municipio,
-                item_key=row.name,
-                entidad_id=restaurante_id,
-            )
+            col_experiencia, col_incidencia = st.columns(2, gap="small")
+            with col_experiencia:
+                formulario_nueva_resena_restaurante(
+                    nombre=nombre,
+                    municipio=municipio,
+                    item_key=row.name,
+                    restaurante_id=restaurante_id,
+                )
+            with col_incidencia:
+                formulario_incidencia(
+                    tipo="restaurante",
+                    categoria="correccion",
+                    nombre=nombre,
+                    municipio=municipio,
+                    item_key=row.name,
+                    entidad_id=restaurante_id,
+                )
 
 # ─────────────────────────────────────────────
 # APP PRINCIPAL
