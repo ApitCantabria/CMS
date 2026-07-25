@@ -1324,21 +1324,23 @@ def modulo_restaurantes(dfs):
         </div>
         """)
 
-        formulario_incidencia(
-            tipo="restaurante",
-            categoria="correccion",
-            nombre=nombre,
-            municipio=municipio,
-            item_key=row.name,
-            entidad_id=restaurante_id,
-        )
-
-        formulario_nueva_resena_restaurante(
-            nombre=nombre,
-            municipio=municipio,
-            item_key=row.name,
-            restaurante_id=restaurante_id,
-        )
+        col_experiencia, col_incidencia = st.columns(2, gap="small")
+        with col_experiencia:
+            formulario_nueva_resena_restaurante(
+                nombre=nombre,
+                municipio=municipio,
+                item_key=row.name,
+                restaurante_id=restaurante_id,
+            )
+        with col_incidencia:
+            formulario_incidencia(
+                tipo="restaurante",
+                categoria="correccion",
+                nombre=nombre,
+                municipio=municipio,
+                item_key=row.name,
+                entidad_id=restaurante_id,
+            )
 
 # ─────────────────────────────────────────────
 # APP PRINCIPAL
