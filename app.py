@@ -5,6 +5,7 @@ Formularios internos + Google Apps Script + Google Sheets
 """
 
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from datetime import date
 import textwrap
@@ -1765,10 +1766,90 @@ def render_header():
 
 @st.dialog("Ayuda", width="large")
 def mostrar_ayuda():
-    """Muestra la guía visual sin abandonar la aplicación."""
-    st.image(
-        Path(__file__).with_name("ayuda-cms-apit.png"),
-        use_container_width=True,
+    """Muestra la guía visual con controles de zoom y desplazamiento."""
+    image_path = Path(__file__).with_name("ayuda-cms-apit.png")
+    image_data = base64.b64encode(image_path.read_bytes()).decode("ascii")
+    components.html(
+        f"""
+        <!doctype html>
+        <html lang="es">
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                * {{ box-sizing: border-box; }}
+                body {{ margin: 0; font-family: Arial, sans-serif; background: #f4f6f5; }}
+                .viewer {{ height: 690px; display: flex; flex-direction: column; }}
+                .toolbar {{
+                    display: flex; justify-content: flex-end; align-items: center;
+                    gap: 0.35rem; padding: 0.45rem; background: #ffffff;
+                    border: 1px solid #dfe5e1; border-radius: 9px 9px 0 0;
+                }}
+                button {{
+                    border: 1px solid #cbd5cf; border-radius: 7px;
+                    background: #ffffff; color: #145d39; cursor: pointer;
+                    min-width: 2.25rem; min-height: 2.1rem; font-weight: 700;
+                }}
+                button:hover {{ background: #edf6f0; }}
+                #level {{ color: #52605a; font-size: 0.8rem; min-width: 3.2rem; text-align: center; }}
+                .canvas {{
+                    flex: 1; overflow: auto; border: 1px solid #dfe5e1;
+                    border-top: 0; border-radius: 0 0 9px 9px;
+                    background: #e9edeb; text-align: center;
+                    overscroll-behavior: contain;
+                }}
+                img {{
+                    display: block; width: 100%; max-width: none; height: auto;
+                    margin: 0 auto; touch-action: pinch-zoom;
+                }}
+                @media (max-width: 600px) {{
+                    .viewer {{ height: 610px; }}
+                    .toolbar {{ position: sticky; top: 0; z-index: 2; }}
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="viewer">
+                <div class="toolbar" aria-label="Controles de zoom">
+                    <button type="button" id="minus" aria-label="Reducir">−</button>
+                    <span id="level">100 %</span>
+                    <button type="button" id="plus" aria-label="Ampliar">+</button>
+                    <button type="button" id="reset" aria-label="Restablecer zoom">100 %</button>
+                </div>
+                <div class="canvas" id="canvas">
+                    <img id="guide" src="data:image/png;base64,{image_data}" alt="Guía de uso de CMS APIT Cantabria">
+                </div>
+            </div>
+            <script>
+                const image = document.getElementById('guide');
+                const level = document.getElementById('level');
+                const canvas = document.getElementById('canvas');
+                let zoom = 1;
+
+                function setZoom(next) {{
+                    zoom = Math.min(3.5, Math.max(0.75, next));
+                    image.style.width = `${{zoom * 100}}%`;
+                    level.textContent = `${{Math.round(zoom * 100)}} %`;
+                }}
+
+                document.getElementById('plus').addEventListener('click', () => setZoom(zoom + 0.25));
+                document.getElementById('minus').addEventListener('click', () => setZoom(zoom - 0.25));
+                document.getElementById('reset').addEventListener('click', () => {{
+                    setZoom(1);
+                    canvas.scrollTo({{ top: 0, left: 0, behavior: 'smooth' }});
+                }});
+                image.addEventListener('dblclick', () => setZoom(zoom === 1 ? 2 : 1));
+                canvas.addEventListener('wheel', (event) => {{
+                    if (!event.ctrlKey) return;
+                    event.preventDefault();
+                    setZoom(zoom + (event.deltaY < 0 ? 0.25 : -0.25));
+                }}, {{ passive: false }});
+            </script>
+        </body>
+        </html>
+        """,
+        height=710,
+        scrolling=False,
     )
 
 
