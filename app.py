@@ -613,6 +613,14 @@ def inject_css():
         font-weight: 600;
     }
 
+    /* Streamlit aplica el color del tema al texto interior de la pestaña.
+       Forzamos que herede el del botón para conservar el contraste también
+       cuando el usuario tiene seleccionado el tema oscuro. */
+    button[data-baseweb="tab"] p,
+    button[data-baseweb="tab"] [data-testid="stMarkdownContainer"] {
+        color: inherit !important;
+    }
+
     button[data-baseweb="tab"][aria-selected="true"] {
         background: transparent;
         color: #145d39;
@@ -623,6 +631,26 @@ def inject_css():
         border-color: #e3e7e3 !important;
         border-radius: 14px !important;
         box-shadow: 0 4px 15px rgba(37, 58, 45, .055);
+    }
+
+    /* Los expanders son widgets nativos y Streamlit cambia sus textos con el
+       tema. Usar aquí las variables del propio tema evita texto oscuro sobre
+       fondo oscuro (o texto blanco sobre fondo claro). */
+    [data-testid="stExpander"] details {
+        background: var(--background-color, #ffffff);
+        color: var(--text-color, #1a2e40);
+        border-color: var(--secondary-background-color, #e3e7e3);
+    }
+
+    [data-testid="stExpander"] summary,
+    [data-testid="stExpander"] summary p,
+    [data-testid="stExpander"] summary span {
+        color: inherit !important;
+    }
+
+    [data-testid="stExpander"] summary svg {
+        fill: currentColor !important;
+        color: currentColor !important;
     }
 
     .badge {
@@ -636,7 +664,7 @@ def inject_css():
 
     .benefits {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 1.4rem;
         margin: 1.7rem 1.1rem 0;
     }
@@ -1736,15 +1764,11 @@ def main():
         <div class="benefits">
             <div class="benefit">
                 <div class="benefit-icon">⌖</div>
-                <div><strong>Información actualizada</strong><span>Datos revisados para que trabajes con total confianza.</span></div>
+                <div><strong>Información actualizada</strong><span>Con la colaboración de todos podemos mantenerla al día. Participa confirmando, corrigiendo o añadiendo información.</span></div>
             </div>
             <div class="benefit">
                 <div class="benefit-icon">♙</div>
                 <div><strong>De guías para guías</strong><span>Una herramienta creada por y para profesionales del turismo.</span></div>
-            </div>
-            <div class="benefit">
-                <div class="benefit-icon">♡</div>
-                <div><strong>Impulsa Cantabria</strong><span>Conoce mejor lo nuestro para ofrecer experiencias únicas.</span></div>
             </div>
         </div>
         """,
