@@ -326,6 +326,18 @@ def inject_css():
         margin-bottom: 0.25rem;
     }
 
+    .st-key-abrir_ayuda {
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .st-key-abrir_ayuda button {
+        width: auto !important;
+        min-height: 2.15rem;
+        padding: 0.35rem 0.65rem !important;
+        font-size: 0.82rem;
+    }
+
     .section-header {
         background: linear-gradient(135deg, #1a4a6b 0%, #0d7c9e 100%);
         color: white;
@@ -1783,7 +1795,7 @@ def main():
 
     _, ayuda_col = st.columns([8, 2])
     with ayuda_col:
-        if st.button("❔ Ayuda", use_container_width=True, key="abrir_ayuda"):
+        if st.button("❔ Ayuda", key="abrir_ayuda"):
             mostrar_ayuda()
 
     tab_rec, tab_rest = st.tabs(["Recursos turísticos", "Restaurantes"])
