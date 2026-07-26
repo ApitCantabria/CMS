@@ -14,7 +14,7 @@ import logging
 import base64
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote_plus, urlparse
 
 from cms.config import SHEET_URLS
 from cms.data import load_all_sheets, normalize_lookup
@@ -422,6 +422,27 @@ def inject_css():
     }
 
     .card-contact a:hover {
+        text-decoration: underline;
+    }
+
+    .restaurant-location {
+        display: flex;
+        align-items: baseline;
+        gap: 0.35rem 0.65rem;
+        flex-wrap: wrap;
+        color: #5f6873;
+        font-size: 0.82rem;
+        margin: 0.12rem 0 0.45rem;
+    }
+
+    .restaurant-location a {
+        color: #0369a1;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .restaurant-location a:hover {
         text-decoration: underline;
     }
 
@@ -1586,6 +1607,7 @@ def modulo_restaurantes(dfs):
         telefono = plain_text_content(row.get("telefono", ""))
         telefono_href = re.sub(r"[^\d+]", "", telefono)
         web_restaurante = safe_external_url(row.get("web", ""))
+        direccion = plain_text_content(row.get("direccion", ""))
         grupos = row.get("admite_grupos", "")
         precio = row.get("precio_menu_grupos", None)
         rating = row.get("rating_medio", None)
@@ -1604,6 +1626,18 @@ def modulo_restaurantes(dfs):
                 'rel="noopener noreferrer">↗ Web</a>'
             )
         contacto_html += '</div>'
+
+        ubicacion_html = ""
+        if direccion:
+            maps_query = quote_plus(f"{nombre}, {direccion}")
+            maps_url = f"https://www.google.com/maps/search/?api=1&query={maps_query}"
+            ubicacion_html = (
+                '<div class="restaurant-location">'
+                f'<span>📍 {esc(direccion)}</span>'
+                f'<a href="{esc(maps_url)}" target="_blank" '
+                'rel="noopener noreferrer">Ver en Google Maps ↗</a>'
+                '</div>'
+            )
 
         if str(grupos).strip().upper() in ["SÍ", "SI", "YES", "TRUE", "VERDADERO"]:
             etiquetas_html += '<span class="badge badge-green">Admite grupos</span>'
@@ -1675,6 +1709,7 @@ def modulo_restaurantes(dfs):
                     </div>
                     {contacto_html}
                 </div>
+                {ubicacion_html}
                 {f'<div>{etiquetas_html}</div>' if etiquetas_html else ''}
                 {rating_html}
                 {resenas_html}
@@ -1716,6 +1751,15 @@ def render_header():
     st.markdown('</div>', unsafe_allow_html=True)
 
 
+@st.dialog("Ayuda", width="large")
+def mostrar_ayuda():
+    """Muestra la guía visual sin abandonar la aplicación."""
+    st.image(
+        Path(__file__).with_name("ayuda-cms-apit.png"),
+        use_container_width=True,
+    )
+
+
 def main():
     inject_css()
     render_header()
@@ -1736,6 +1780,11 @@ def main():
     if load_result.warnings:
         for warning in load_result.warnings:
             logger.warning(warning)
+
+    _, ayuda_col = st.columns([8, 2])
+    with ayuda_col:
+        if st.button("❔ Ayuda", use_container_width=True, key="abrir_ayuda"):
+            mostrar_ayuda()
 
     tab_rec, tab_rest = st.tabs(["Recursos turísticos", "Restaurantes"])
 
